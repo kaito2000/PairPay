@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#fbfaf8" />
+    <meta name="description" content="夫婦特化型 共通家計簿＆折半精算 PWA - PairPay" />
+    <title>PairPay - 夫婦の割り勘＆立替精算</title>
+
+    <!-- PWA & アイコン -->
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" type="image/png" href="./icon-192.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="PairPay" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./src/styles/main.css" />
+  </head>
+  <body class="bg-[#fbfaf8] min-h-screen text-[#2d312e] antialiased selection:bg-[#edf4ee] selection:text-[#426b42]">
+    <!-- メインレイアウトコンテナ (スマホ幅最大448pxで中央揃え) -->
+    <div id="app" class="max-w-md mx-auto min-h-screen bg-[#fbfaf8] flex flex-col relative pb-32"></div>
+
+    <!-- トースト通知コンテナ -->
+    <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col gap-2 items-center w-full max-w-xs px-4"></div>
+
+    <!-- Service Worker 登録スクリプト -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then((reg) => console.log('[PWA] Service Worker registered with scope:', reg.scope))
+            .catch((err) => console.warn('[PWA] Service Worker registration failed:', err));
+        });
+      }
+    </script>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

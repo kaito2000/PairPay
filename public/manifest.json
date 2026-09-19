@@ -1,0 +1,31 @@
+{
+  "name": "PairPay - 夫婦の割り勘＆立替精算",
+  "short_name": "PairPay",
+  "description": "夫婦間の共通費用の立替や月末の折半精算を最小限のタップ数で記録・同期する家計簿PWA",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fbfaf8",
+  "theme_color": "#fbfaf8",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./apple-touch-icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["finance", "lifestyle", "productivity"]
+}

@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-main: #fbfaf8;
+    --bg-card: #ffffff;
+    --text-main: #2d312e;
+    --text-muted: #797f7a;
+    --accent-sage: #52796f;
+    --accent-sage-light: #eaf1ed;
+    --user-husband: #5c7f99;
+    --user-husband-light: #eef4f8;
+    --user-wife: #c26d7f;
+    --user-wife-light: #faedf0;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+  }
+
+  input, button, select, textarea {
+    user-select: auto;
+  }
+}
+
+/* スクロールバー非表示 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 柔らかいソフトシャドウ */
+.shadow-soft {
+  box-shadow: 0 4px 20px -2px rgba(45, 49, 46, 0.05), 0 2px 6px -1px rgba(45, 49, 46, 0.03);
+}
+
+.shadow-card {
+  box-shadow: 0 8px 30px -4px rgba(45, 49, 46, 0.08);
+}
+
+.shadow-floating {
+  box-shadow: 0 12px 35px -6px rgba(82, 121, 111, 0.25);
+}
+
+/* テンキーボタン用タップフィードバック */
+.keypad-btn {
+  transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+  -webkit-touch-callout: none;
+}
+.keypad-btn:active {
+  transform: scale(0.92);
+  background-color: #e5e9e6;
+}
+
+/* アニメーション */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
