@@ -36,8 +36,8 @@ npm run preview
 
 1. GitHub上にリポジトリを作成し、コードをプッシュします。
 2. リポジトリの **Settings > Pages** を開きます。
-3. **Build and deployment > Source** で **GitHub Actions** を選択します。
-4. `main` ブランチにプッシュされると、自動的に `.github/workflows/deploy.yml` が実行され、公開されます。
+3. **Build and deployment > Source** で **「GitHub Actions」** を選択します。
+4. `main` ブランチにプッシュされると、自動的に `.github/workflows/deploy.yml` が実行され、`https://<ユーザー名>.github.io/PairPay/` で公開されます。
 
 ## 今後のロードマップ
 
