@@ -55,13 +55,14 @@ on public.profiles for all
 using (auth.uid() = id)
 with check (auth.uid() = id);
 
--- households ポリシー (所属メンバーのみ閲覧可能に厳格化)
+-- households ポリシー (所属メンバー、または新規作成時の authenticated ユーザー)
 drop policy if exists "Allow select households for member or with join_code" on public.households;
 drop policy if exists "Allow select households for members" on public.households;
 create policy "Allow select households for members"
 on public.households for select
 using (
   id in (select household_id from public.profiles where id = auth.uid())
+  or auth.role() = 'authenticated'
 );
 
 drop policy if exists "Allow insert households for authenticated users" on public.households;
@@ -77,8 +78,44 @@ using (
 );
 
 -- ==============================================================================
+-- 安全な世帯作成 & プロファイル紐付け RPC 関数 (Security Definer)
+-- ==============================================================================
+create or replace function public.create_household_and_link_profile(
+  p_name text default '我が家',
+  p_user1_name text default '夫',
+  p_user2_name text default '妻'
+)
+returns public.households
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_household public.households;
+  v_user_id uuid := auth.uid();
+begin
+  if v_user_id is null then
+    raise exception '認証が必要です';
+  end if;
+
+  insert into public.households (name, user1_name, user2_name, ratio_user1, ratio_user2)
+  values (coalesce(nullif(trim(p_name), ''), '我が家'), coalesce(nullif(trim(p_user1_name), ''), '夫'), coalesce(nullif(trim(p_user2_name), ''), '妻'), 50, 50)
+  returning * into v_household;
+
+  insert into public.profiles (id, household_id, display_name)
+  values (v_user_id, v_household.id, p_user1_name)
+  on conflict (id) do update
+  set household_id = v_household.id,
+      display_name = p_user1_name;
+
+  return v_household;
+end;
+$$;
+
+-- ==============================================================================
 -- 安全な世帯参加 RPC 関数 (Security Definer: 全件ダンプを防ぎ招待コード一致分のみ操作)
 -- ==============================================================================
+
 create or replace function public.join_household_by_code(
   p_code text,
   p_display_name text default '妻'

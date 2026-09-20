@@ -59,6 +59,7 @@ export class SupabaseService {
 
   /**
    * 新しい世帯を作成し、現在のユーザーをその世帯に紐付ける
+   * セキュリティ強化RLS環境でも確実に成功するよう、プロファイル紐付けを確実に行う
    */
   static async createHousehold(
     name: string = '我が家',
@@ -71,30 +72,51 @@ export class SupabaseService {
     const { userId } = await this.ensureAuth();
     if (!userId) return null;
 
-    // 1. households テーブルに作成
-    const { data: householdData, error: hError } = await supabase
+    // 1. 安全なRPC関数があれば最優先で呼び出し (Security Definer)
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('create_household_and_link_profile', {
+        p_name: name,
+        p_user1_name: user1Name,
+        p_user2_name: user2Name,
+      });
+
+      if (!rpcError && rpcData) {
+        return rpcData as Household;
+      }
+    } catch (e) {
+      console.warn('RPC create_household_and_link_profile call failed, falling back', e);
+    }
+
+    // 2. フォールバック: UUID先行生成方式
+    // (.insert().select() だと、まだ profiles に紐付いていないため RLS SELECT ポリシーで弾かれる問題を解決)
+    const newHouseholdId =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : 'h-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+
+    // 2-1. households テーブルに insert (.select() を呼ばずに実行)
+    const { error: hError } = await supabase
       .from('households')
       .insert({
+        id: newHouseholdId,
         name,
         user1_name: user1Name,
         user2_name: user2Name,
         ratio_user1: 50,
         ratio_user2: 50,
-      })
-      .select()
-      .single();
+      });
 
-    if (hError || !householdData) {
+    if (hError) {
       console.error('Failed to create household', hError);
       return null;
     }
 
-    // 2. profiles テーブルに登録
+    // 2-2. profiles テーブルに世帯IDを登録 (これで所属メンバーになる)
     const { error: pError } = await supabase
       .from('profiles')
       .upsert({
         id: userId,
-        household_id: householdData.id,
+        household_id: newHouseholdId,
         display_name: user1Name,
       });
 
@@ -102,8 +124,29 @@ export class SupabaseService {
       console.error('Failed to link profile to household', pError);
     }
 
+    // 2-3. profiles に紐付いたので、RLS SELECT ポリシーを満たして安全に取得
+    const { data: householdData, error: fetchError } = await supabase
+      .from('households')
+      .select('*')
+      .eq('id', newHouseholdId)
+      .maybeSingle();
+
+    if (fetchError || !householdData) {
+      console.warn('Could not fetch newly created household, using constructed object', fetchError);
+      return {
+        id: newHouseholdId,
+        name,
+        user1_name: user1Name,
+        user2_name: user2Name,
+        ratio_user1: 50,
+        ratio_user2: 50,
+        created_at: new Date().toISOString(),
+      };
+    }
+
     return householdData as Household;
   }
+
 
   /**
    * 招待コード（join_code）で既存の世帯に参加する

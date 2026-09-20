@@ -797,7 +797,7 @@ function attachEventListeners(
     const urlInput = document.getElementById('supabase-url') as HTMLInputElement;
     const keyInput = document.getElementById('supabase-anon-key') as HTMLInputElement;
 
-    const url = urlInput.value.trim();
+    const url = urlInput.value.trim().replace(/\/+$/, '');
     const anonKey = keyInput.value.trim();
 
     saveSupabaseConfig({ url, anonKey });
