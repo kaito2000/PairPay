@@ -175,16 +175,22 @@ export function groupExpensesByDate(expenses: Expense[]): {
 }
 
 /**
- * 登録されている支出から利用可能な年月リストを取得（現在月を必ず含む、降順）
+ * 登録されている支出から利用可能な年月リストを取得（現在月および選択中の月を必ず含む、降順）
  */
 export function getAvailableMonths(
   expenses: Expense[],
-  currentYearMonth: string
+  currentYearMonth: string,
+  selectedYearMonth?: string
 ): { yearMonth: string; label: string; count: number }[] {
   const countMap = new Map<string, number>();
 
   // 現在月をデフォルト登録
   countMap.set(currentYearMonth, 0);
+
+  // 選択中の月も必ず登録（支出0件の月でもプルダウンで表示・同期可能にする）
+  if (selectedYearMonth) {
+    countMap.set(selectedYearMonth, 0);
+  }
 
   for (const exp of expenses) {
     if (exp.expense_date && exp.expense_date.length >= 7) {
@@ -201,4 +207,5 @@ export function getAvailableMonths(
     count: countMap.get(ym) || 0,
   }));
 }
+
 

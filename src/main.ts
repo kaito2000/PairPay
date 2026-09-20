@@ -139,7 +139,7 @@ function renderApp() {
 
   const currentYM = getCurrentYearMonth();
   const selectedMonthLabel = formatYearMonth(selectedYearMonth);
-  const availableMonths = getAvailableMonths(expenses, currentYM);
+  const availableMonths = getAvailableMonths(expenses, currentYM, selectedYearMonth);
 
   // 選択月の支出データ
   const monthlyExpenses = filterExpensesByMonth(expenses, selectedYearMonth);
@@ -161,6 +161,13 @@ function renderApp() {
     ${renderExpenseModal(household)}
     ${renderSettingsModal(household, supabaseConfig, isCloudSyncActive)}
   `;
+
+  // プルダウンの値を確実に選択中の月に設定（ブラウザキャッシュ対策）
+  const selectMonthDropdown = document.getElementById('select-month-dropdown') as HTMLSelectElement;
+  if (selectMonthDropdown) {
+    selectMonthDropdown.value = selectedYearMonth;
+  }
+
 
   // Lucideアイコンの再描画
   createIcons({
