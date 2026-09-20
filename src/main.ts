@@ -30,7 +30,9 @@ import {
   List,
   Calculator,
   Info,
+  Pencil,
 } from 'lucide';
+
 import { CategoryType, Expense, Household } from './types.ts';
 import { LocalStorageService } from './services/storage.ts';
 import { SupabaseService } from './services/supabaseService.ts';
@@ -202,8 +204,10 @@ function renderApp() {
       List,
       Calculator,
       Info,
+      Pencil,
     },
   });
+
 
   // イベントリスナーの再紐付け
   attachEventListeners(settlementSummary, selectedMonthLabel, unsettledInMonth.length);
@@ -264,20 +268,104 @@ function attachEventListeners(
     }
   };
 
-  const openModal = () => {
-    currentAmountStr = '0';
-    updateAmountDisplay();
+  const openModal = (expenseId?: string) => {
+    const inputExpenseId = document.getElementById('input-expense-id') as HTMLInputElement;
+    const modalTitle = document.getElementById('modal-expense-title');
+    const btnSubmitText = document.getElementById('btn-submit-expense-text');
     const titleInput = document.getElementById('input-title') as HTMLInputElement;
-    if (titleInput) titleInput.value = '';
-
-    // モーダルの初期日付: 選択中の月に合わせた日付（当月なら今日、過去・未来ならその月の1日）
     const dateInput = document.getElementById('input-date') as HTMLInputElement;
-    if (dateInput) {
-      const today = new Date().toISOString().split('T')[0];
-      if (today.startsWith(selectedYearMonth)) {
-        dateInput.value = today;
-      } else {
-        dateInput.value = `${selectedYearMonth}-01`;
+    const inputPayer = document.getElementById('input-payer') as HTMLInputElement;
+    const inputCategory = document.getElementById('input-category') as HTMLInputElement;
+
+    const payerButtons = document.querySelectorAll<HTMLButtonElement>('.payer-btn');
+    const catButtons = document.querySelectorAll<HTMLButtonElement>('.category-btn');
+
+    if (expenseId) {
+      // 編集モード
+      const exp = expenses.find((e) => e.id === expenseId);
+      if (!exp) return;
+
+      if (inputExpenseId) inputExpenseId.value = exp.id;
+      if (modalTitle) modalTitle.textContent = '支出を編集する';
+      if (btnSubmitText) btnSubmitText.textContent = '変更を保存する';
+
+      currentAmountStr = exp.amount.toString();
+      updateAmountDisplay();
+
+      if (titleInput) titleInput.value = exp.title || '';
+      if (dateInput) dateInput.value = exp.expense_date;
+
+      if (inputPayer) {
+        inputPayer.value = exp.paid_by_name;
+        payerButtons.forEach((b) => {
+          const isUser1 = exp.paid_by_name === household.user1_name;
+          const match = b.dataset.payer === exp.paid_by_name;
+          if (match) {
+            b.className = `payer-btn py-2.5 rounded-xl text-xs font-extrabold transition-all bg-white ${
+              isUser1 ? 'text-[#3d637d]' : 'text-[#9c4c5e]'
+            } shadow-sm flex items-center justify-center gap-1.5 cursor-pointer`;
+          } else {
+            b.className =
+              'payer-btn py-2.5 rounded-xl text-xs font-extrabold transition-all text-[#8a857b] hover:text-[#2d312e] flex items-center justify-center gap-1.5 cursor-pointer';
+          }
+        });
+      }
+
+      if (inputCategory) {
+        inputCategory.value = exp.category;
+        catButtons.forEach((b) => {
+          if (b.dataset.category === exp.category) {
+            b.classList.add('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-xs', 'ring-1', 'ring-[#52796f]/30');
+            b.classList.remove('border-[#eeebe4]', 'bg-[#fbfaf8]', 'text-[#6d746f]');
+          } else {
+            b.classList.remove('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-xs', 'ring-1', 'ring-[#52796f]/30');
+            b.classList.add('border-[#eeebe4]', 'bg-[#fbfaf8]', 'text-[#6d746f]');
+          }
+        });
+      }
+    } else {
+      // 新規登録モード
+      if (inputExpenseId) inputExpenseId.value = '';
+      if (modalTitle) modalTitle.textContent = '支出を記録する';
+      if (btnSubmitText) btnSubmitText.textContent = 'この内容で記録する';
+
+      currentAmountStr = '0';
+      updateAmountDisplay();
+      if (titleInput) titleInput.value = '';
+
+      if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        if (today.startsWith(selectedYearMonth)) {
+          dateInput.value = today;
+        } else {
+          dateInput.value = `${selectedYearMonth}-01`;
+        }
+      }
+
+      if (inputPayer) {
+        inputPayer.value = household.user1_name;
+        payerButtons.forEach((b, idx) => {
+          if (idx === 0) {
+            b.className =
+              'payer-btn py-2.5 rounded-xl text-xs font-extrabold transition-all bg-white text-[#3d637d] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer';
+          } else {
+            b.className =
+              'payer-btn py-2.5 rounded-xl text-xs font-extrabold transition-all text-[#8a857b] hover:text-[#2d312e] flex items-center justify-center gap-1.5 cursor-pointer';
+          }
+        });
+      }
+
+      if (inputCategory) {
+        inputCategory.value = 'food';
+        catButtons.forEach((b, idx) => {
+          if (idx === 0) {
+            b.classList.add('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-xs', 'ring-1', 'ring-[#52796f]/30');
+            b.classList.remove('border-[#eeebe4]', 'bg-[#fbfaf8]', 'text-[#6d746f]');
+          } else {
+            b.classList.remove('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-xs', 'ring-1', 'ring-[#52796f]/30');
+            b.classList.add('border-[#eeebe4]', 'bg-[#fbfaf8]', 'text-[#6d746f]');
+          }
+        });
       }
     }
 
@@ -288,11 +376,12 @@ function attachEventListeners(
     modalOverlay?.classList.add('hidden');
   };
 
-  btnOpenModal?.addEventListener('click', openModal);
+  btnOpenModal?.addEventListener('click', () => openModal());
   btnCloseModal?.addEventListener('click', closeModal);
   modalOverlay?.addEventListener('click', (e) => {
     if (e.target === modalOverlay) closeModal();
   });
+
 
   // テンキー数字入力
   const numButtons = document.querySelectorAll<HTMLButtonElement>('.keypad-num-btn');
@@ -423,32 +512,67 @@ function attachEventListeners(
 
     try {
       const expenseDate = dateInput.value || new Date().toISOString().split('T')[0];
-      const payload = {
-        household_id: household.id,
-        title: titleInput.value.trim().slice(0, 100),
-        amount: amount,
-        category: (catInput.value as CategoryType) || 'food',
-        paid_by_name: payerInput.value || household.user1_name,
-        expense_date: expenseDate,
-        is_settled: false,
-      };
+      const inputExpenseId = (document.getElementById('input-expense-id') as HTMLInputElement)?.value;
 
-      if (isCloudSyncActive) {
-        await SupabaseService.addExpense(payload);
-        expenses = await SupabaseService.getExpenses();
+      if (inputExpenseId) {
+        // 既存の支出を編集・更新
+        const existing = expenses.find((e) => e.id === inputExpenseId);
+        const payload: Expense = {
+          id: inputExpenseId,
+          household_id: household.id,
+          title: titleInput.value.trim().slice(0, 100),
+          amount: amount,
+          category: (catInput.value as CategoryType) || 'food',
+          paid_by_name: payerInput.value || household.user1_name,
+          expense_date: expenseDate,
+          is_settled: existing ? existing.is_settled : false,
+          created_at: existing ? existing.created_at : new Date().toISOString(),
+        };
+
+        if (isCloudSyncActive) {
+          await SupabaseService.updateExpense(payload);
+          expenses = await SupabaseService.getExpenses();
+        } else {
+          LocalStorageService.updateExpense(payload);
+          expenses = LocalStorageService.getExpenses();
+        }
+
+        const enteredYM = expenseDate.substring(0, 7);
+        selectedYearMonth = enteredYM;
+
+        closeModal();
+        renderApp();
+        showToast(`¥${amount.toLocaleString()} の支出内容を更新しました ✏️`);
       } else {
-        LocalStorageService.addExpense(payload);
-        expenses = LocalStorageService.getExpenses();
+        // 新規登録
+        const payload = {
+          household_id: household.id,
+          title: titleInput.value.trim().slice(0, 100),
+          amount: amount,
+          category: (catInput.value as CategoryType) || 'food',
+          paid_by_name: payerInput.value || household.user1_name,
+          expense_date: expenseDate,
+          is_settled: false,
+        };
+
+        if (isCloudSyncActive) {
+          await SupabaseService.addExpense(payload);
+          expenses = await SupabaseService.getExpenses();
+        } else {
+          LocalStorageService.addExpense(payload);
+          expenses = LocalStorageService.getExpenses();
+        }
+
+        // 入力した日付の月に自動移動して確認できるようにする
+        const enteredYM = expenseDate.substring(0, 7);
+        selectedYearMonth = enteredYM;
+
+        closeModal();
+        renderApp();
+        showToast(`¥${amount.toLocaleString()} の支出を記録しました 🎉`);
       }
-
-      // 入力した日付の月に自動移動して確認できるようにする
-      const enteredYM = expenseDate.substring(0, 7);
-      selectedYearMonth = enteredYM;
-
-      closeModal();
-      renderApp();
-      showToast(`¥${amount.toLocaleString()} の支出を記録しました 🎉`);
     } catch (err) {
+
       console.error('Failed to submit expense', err);
       showToast('記録に失敗しました。もう一度お試しください', 'error');
     } finally {
@@ -460,8 +584,17 @@ function attachEventListeners(
     }
   });
 
+  // 5.5 支出編集ボタン
+  document.querySelectorAll<HTMLButtonElement>('[data-edit-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.editId;
+      if (id) openModal(id);
+    });
+  });
+
   // 6. 支出削除ボタン
   document.querySelectorAll<HTMLButtonElement>('[data-delete-id]').forEach((btn) => {
+
     btn.addEventListener('click', async () => {
       const id = btn.dataset.deleteId;
       if (!id) return;
@@ -563,24 +696,56 @@ function attachEventListeners(
     const r1 = parseInt(ratioSlider.value, 10);
     const r2 = 100 - r1;
 
+    const prevUser1 = household.user1_name;
+    const prevUser2 = household.user2_name;
+    const newUser1 = user1Input.value.trim() || '夫';
+    const newUser2 = user2Input.value.trim() || '妻';
+
     household = {
       ...household,
-      user1_name: user1Input.value.trim() || '夫',
-      user2_name: user2Input.value.trim() || '妻',
+      user1_name: newUser1,
+      user2_name: newUser2,
       ratio_user1: r1,
       ratio_user2: r2,
     };
 
+    // 名前の変更があれば過去の支出履歴の立替者名も一括更新
+    let renamed = false;
+    if (prevUser1 !== newUser1) {
+      if (isCloudSyncActive) {
+        await SupabaseService.renamePayer(household.id, prevUser1, newUser1);
+      } else {
+        LocalStorageService.renamePayer(prevUser1, newUser1);
+      }
+      renamed = true;
+    }
+
+    if (prevUser2 !== newUser2) {
+      if (isCloudSyncActive) {
+        await SupabaseService.renamePayer(household.id, prevUser2, newUser2);
+      } else {
+        LocalStorageService.renamePayer(prevUser2, newUser2);
+      }
+      renamed = true;
+    }
+
     if (isCloudSyncActive) {
       await SupabaseService.updateHousehold(household);
+      expenses = await SupabaseService.getExpenses();
     } else {
       LocalStorageService.saveHousehold(household);
+      expenses = LocalStorageService.getExpenses();
     }
 
     settingsModalOverlay?.classList.add('hidden');
     renderApp();
-    showToast('世帯設定を保存しました ⚙️');
+    if (renamed) {
+      showToast('世帯設定と過去の支出履歴の名前を更新しました ⚙️');
+    } else {
+      showToast('世帯設定を保存しました ⚙️');
+    }
   });
+
 
   // 12. 世帯招待コードのコピー
   const btnCopyJoinCode = document.getElementById('btn-copy-join-code');

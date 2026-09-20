@@ -105,9 +105,9 @@ export function renderExpenseList(
                               </div>
                             </div>
 
-                            <!-- 金額 & 立替者バッジ & 削除 -->
-                            <div class="flex items-center gap-2 shrink-0 ml-2">
-                              <div class="text-right">
+                            <!-- 金額 & 立替者バッジ & 編集 & 削除 -->
+                            <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                              <div class="text-right mr-1">
                                 <div class="text-xs font-black text-[#2d312e]">
                                   ¥${expense.amount.toLocaleString()}
                                 </div>
@@ -115,6 +115,13 @@ export function renderExpenseList(
                                   ${safePaidBy}
                                 </span>
                               </div>
+                              <button
+                                data-edit-id="${expense.id}"
+                                class="w-7 h-7 rounded-xl flex items-center justify-center text-[#808781] hover:text-[#52796f] hover:bg-[#edf4ee] active:scale-90 transition-all cursor-pointer"
+                                title="編集"
+                              >
+                                <i data-lucide="pencil" class="w-3.5 h-3.5 pointer-events-none"></i>
+                              </button>
                               <button
                                 data-delete-id="${expense.id}"
                                 class="w-7 h-7 rounded-xl flex items-center justify-center text-[#b8beba] hover:text-[#c26d7f] hover:bg-[#faedf0] active:scale-90 transition-all cursor-pointer"
@@ -124,6 +131,7 @@ export function renderExpenseList(
                               </button>
                             </div>
                           </div>
+
                         `;
                       })
                       .join('')}

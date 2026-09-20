@@ -261,7 +261,56 @@ export class SupabaseService {
   }
 
   /**
+   * 支出を更新
+   */
+  static async updateExpense(expense: Expense): Promise<boolean> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return false;
+
+    const { error } = await supabase
+      .from('expenses')
+      .update({
+        title: expense.title,
+        amount: expense.amount,
+        category: expense.category,
+        paid_by_name: expense.paid_by_name,
+        expense_date: expense.expense_date,
+        is_settled: expense.is_settled,
+      })
+      .eq('id', expense.id);
+
+    if (error) {
+      console.error('Failed to update expense', error);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * 世帯内の支出の立替者名を一括置換
+   */
+  static async renamePayer(householdId: string, oldName: string, newName: string): Promise<boolean> {
+    const supabase = getSupabaseClient();
+    if (!supabase || !oldName || !newName || oldName === newName) return false;
+
+    const { error } = await supabase
+      .from('expenses')
+      .update({ paid_by_name: newName })
+      .eq('household_id', householdId)
+      .eq('paid_by_name', oldName);
+
+    if (error) {
+      console.error('Failed to rename payer in expenses', error);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * 未精算の支出をすべて精算済みに更新
+
    */
   static async settleAll(householdId: string): Promise<boolean> {
     const supabase = getSupabaseClient();

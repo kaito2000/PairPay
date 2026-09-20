@@ -112,6 +112,22 @@ export class LocalStorageService {
     this.saveExpenses(expenses);
   }
 
+  static updateExpense(updatedExpense: Expense): void {
+    const expenses = this.getExpenses().map((e) => (e.id === updatedExpense.id ? updatedExpense : e));
+    this.saveExpenses(expenses);
+  }
+
+  static renamePayer(oldName: string, newName: string): void {
+    if (!oldName || !newName || oldName === newName) return;
+    const expenses = this.getExpenses().map((e) => {
+      if (e.paid_by_name === oldName) {
+        return { ...e, paid_by_name: newName };
+      }
+      return e;
+    });
+    this.saveExpenses(expenses);
+  }
+
   static settleAll(): void {
     const expenses = this.getExpenses().map((e) => ({
       ...e,

@@ -17,15 +17,20 @@ export function renderExpenseModal(household: Household): string {
       <!-- ボトムシートコンテナ -->
       <div id="expense-modal-sheet" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#ffffff] rounded-t-[32px] shadow-2xl p-5 z-50 animate-slide-up max-h-[92vh] overflow-y-auto no-scrollbar border-t border-[#eeebe4]">
         
-        <!-- ハンドルバー & クローズボタン -->
-        <div class="flex items-center justify-between mb-3">
-          <div class="w-10 h-1.5 bg-[#e2ded6] rounded-full mx-auto -mr-2"></div>
+        <!-- ヘッダー (タイトル & クローズボタン) -->
+        <div class="flex items-center justify-between mb-2.5">
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-[#52796f]"></div>
+            <h3 id="modal-expense-title" class="text-sm font-extrabold text-[#2d312e]">支出を記録する</h3>
+          </div>
           <button type="button" id="btn-close-modal" class="w-8 h-8 rounded-full flex items-center justify-center text-[#999f9a] hover:text-[#2d312e] hover:bg-[#f5f2eb] transition-all cursor-pointer">
             <i data-lucide="x" class="w-4 h-4"></i>
           </button>
         </div>
 
         <form id="form-expense" class="space-y-3.5">
+          <input type="hidden" id="input-expense-id" value="" />
+
           <!-- 1. 金額ディスプレイ & クイック加算 -->
           <div class="bg-[#fbfaf8] rounded-2xl p-4 border border-[#eeebe4] text-center shadow-inner relative">
             <div class="text-[11px] font-bold text-[#808781] mb-1">金額</div>
@@ -149,17 +154,18 @@ export function renderExpenseModal(household: Household): string {
             </div>
           </div>
 
-          <!-- 6. 登録ボタン -->
+          <!-- 6. 登録・保存ボタン -->
           <button
             type="submit"
             id="btn-submit-expense"
             class="w-full py-4 px-4 rounded-[22px] bg-gradient-to-r from-[#52796f] to-[#3d5a53] hover:from-[#486b62] hover:to-[#354f49] active:scale-[0.98] text-white font-extrabold text-sm shadow-floating flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <i data-lucide="check" class="w-4 h-4"></i>
-            <span>この内容で記録する</span>
+            <span id="btn-submit-expense-text">この内容で記録する</span>
           </button>
         </form>
       </div>
     </div>
   `;
 }
+
