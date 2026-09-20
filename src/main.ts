@@ -22,13 +22,30 @@ import {
   CloudOff,
   Database,
   Delete,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Calendar,
+  Filter,
+  List,
+  Calculator,
+  Info,
 } from 'lucide';
 import { CategoryType, Expense, Household } from './types.ts';
 import { LocalStorageService } from './services/storage.ts';
 import { SupabaseService } from './services/supabaseService.ts';
 import { getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig } from './supabase.ts';
-import { calculateSettlement, generateLineSettlementText } from './logic/settlement.ts';
+import {
+  calculateSettlement,
+  generateLineSettlementText,
+  getCurrentYearMonth,
+  formatYearMonth,
+  shiftMonth,
+  filterExpensesByMonth,
+  getAvailableMonths,
+} from './logic/settlement.ts';
 import { renderHeader } from './components/Header.ts';
+import { renderMonthNavigator } from './components/MonthNavigator.ts';
 import { renderSettlementCard } from './components/SettlementCard.ts';
 import { renderCategoryBar } from './components/CategoryBar.ts';
 import { renderExpenseList } from './components/ExpenseList.ts';
@@ -38,6 +55,7 @@ import { renderSettingsModal } from './components/SettingsModal.ts';
 // アプリケーション状態
 let household: Household = LocalStorageService.getHousehold();
 let expenses: Expense[] = LocalStorageService.getExpenses();
+let selectedYearMonth: string = getCurrentYearMonth();
 let showAllExpenses = false;
 let isCloudSyncActive = false;
 
@@ -63,12 +81,6 @@ function showToast(message: string, type: 'success' | 'info' | 'error' = 'succes
     toast.classList.add('opacity-0', 'translate-y-2');
     setTimeout(() => toast.remove(), 250);
   }, 2500);
-}
-
-// 現在の年月テキスト取得 (例: "2026年9月")
-function getCurrentMonthText(): string {
-  const now = new Date();
-  return `${now.getFullYear()}年${now.getMonth() + 1}月`;
 }
 
 // データのロード（クラウドまたはローカル）
@@ -125,22 +137,32 @@ function renderApp() {
   const app = document.getElementById('app');
   if (!app) return;
 
-  const settlementSummary = calculateSettlement(expenses, household);
-  const monthText = getCurrentMonthText();
+  const currentYM = getCurrentYearMonth();
+  const selectedMonthLabel = formatYearMonth(selectedYearMonth);
+  const availableMonths = getAvailableMonths(expenses, currentYM);
+
+  // 選択月の支出データ
+  const monthlyExpenses = filterExpensesByMonth(expenses, selectedYearMonth);
+  const unsettledInMonth = monthlyExpenses.filter((e) => !e.is_settled);
+  const monthlyTotal = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // 選択月に対する精算計算
+  const settlementSummary = calculateSettlement(unsettledInMonth, household);
   const supabaseConfig = getSupabaseConfig();
 
   app.innerHTML = `
-    ${renderHeader(monthText, isCloudSyncActive)}
-    <main class="p-4 space-y-4 flex-1">
-      ${renderSettlementCard(settlementSummary, household)}
-      ${renderCategoryBar(expenses)}
-      ${renderExpenseList(expenses, household, showAllExpenses)}
+    ${renderHeader(isCloudSyncActive)}
+    <main class="p-4 space-y-3.5 flex-1">
+      ${renderMonthNavigator(selectedYearMonth, currentYM, availableMonths)}
+      ${renderSettlementCard(settlementSummary, household, selectedMonthLabel, unsettledInMonth.length, monthlyTotal)}
+      ${renderCategoryBar(monthlyExpenses, selectedMonthLabel)}
+      ${renderExpenseList(monthlyExpenses, household, showAllExpenses, selectedMonthLabel)}
     </main>
     ${renderExpenseModal(household)}
     ${renderSettingsModal(household, supabaseConfig, isCloudSyncActive)}
   `;
 
-  // Lucideアイコンの再描画 (Tree-shaking対応)
+  // Lucideアイコンの再描画
   createIcons({
     icons: {
       Settings,
@@ -165,16 +187,57 @@ function renderApp() {
       CloudOff,
       Database,
       Delete,
+      ChevronLeft,
+      ChevronRight,
+      ChevronDown,
+      Calendar,
+      Filter,
+      List,
+      Calculator,
+      Info,
     },
   });
 
   // イベントリスナーの再紐付け
-  attachEventListeners(settlementSummary, monthText);
+  attachEventListeners(settlementSummary, selectedMonthLabel, unsettledInMonth.length);
 }
 
 // イベントリスナーの登録
-function attachEventListeners(settlementSummary: ReturnType<typeof calculateSettlement>, monthText: string) {
-  // 1. 支出モーダル開閉 & テンキー状態管理
+function attachEventListeners(
+  settlementSummary: ReturnType<typeof calculateSettlement>,
+  selectedMonthLabel: string,
+  unsettledCountInMonth: number
+) {
+  // 1. 月ナビゲーターのイベント
+  const btnPrevMonth = document.getElementById('btn-prev-month');
+  const btnNextMonth = document.getElementById('btn-next-month');
+  const btnCurrentMonth = document.getElementById('btn-current-month');
+  const selectMonthDropdown = document.getElementById('select-month-dropdown') as HTMLSelectElement;
+
+  btnPrevMonth?.addEventListener('click', () => {
+    selectedYearMonth = shiftMonth(selectedYearMonth, -1);
+    renderApp();
+  });
+
+  btnNextMonth?.addEventListener('click', () => {
+    selectedYearMonth = shiftMonth(selectedYearMonth, 1);
+    renderApp();
+  });
+
+  btnCurrentMonth?.addEventListener('click', () => {
+    selectedYearMonth = getCurrentYearMonth();
+    renderApp();
+  });
+
+  selectMonthDropdown?.addEventListener('change', (e) => {
+    const target = e.target as HTMLSelectElement;
+    if (target.value) {
+      selectedYearMonth = target.value;
+      renderApp();
+    }
+  });
+
+  // 2. 支出モーダル開閉 & テンキー状態管理
   const btnOpenModal = document.getElementById('btn-open-modal');
   const btnCloseModal = document.getElementById('btn-close-modal');
   const modalOverlay = document.getElementById('expense-modal-overlay');
@@ -199,6 +262,18 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
     updateAmountDisplay();
     const titleInput = document.getElementById('input-title') as HTMLInputElement;
     if (titleInput) titleInput.value = '';
+
+    // モーダルの初期日付: 選択中の月に合わせた日付（当月なら今日、過去・未来ならその月の1日）
+    const dateInput = document.getElementById('input-date') as HTMLInputElement;
+    if (dateInput) {
+      const today = new Date().toISOString().split('T')[0];
+      if (today.startsWith(selectedYearMonth)) {
+        dateInput.value = today;
+      } else {
+        dateInput.value = `${selectedYearMonth}-01`;
+      }
+    }
+
     modalOverlay?.classList.remove('hidden');
   };
 
@@ -260,7 +335,7 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
     });
   });
 
-  // 2. 支払者トグル (夫 / 妻)
+  // 3. 支払者トグル (夫 / 妻)
   const payerButtons = document.querySelectorAll<HTMLButtonElement>('.payer-btn');
   const inputPayer = document.getElementById('input-payer') as HTMLInputElement;
 
@@ -287,7 +362,7 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
     });
   });
 
-  // 3. カテゴリ選択
+  // 4. カテゴリ選択
   const catButtons = document.querySelectorAll<HTMLButtonElement>('.category-btn');
   const inputCategory = document.getElementById('input-category') as HTMLInputElement;
 
@@ -306,7 +381,7 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
     });
   });
 
-  // 4. 支出フォーム送信 (二重送信防止・不正金額バリデーション付き)
+  // 5. 支出フォーム送信
   const formExpense = document.getElementById('form-expense') as HTMLFormElement;
   const btnSubmitExpense = document.getElementById('btn-submit-expense') as HTMLButtonElement;
   let isSubmitting = false;
@@ -314,7 +389,7 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
   formExpense?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    if (isSubmitting) return; // 二重送信ガード
+    if (isSubmitting) return;
 
     const amountInput = document.getElementById('input-amount') as HTMLInputElement;
     const payerInput = document.getElementById('input-payer') as HTMLInputElement;
@@ -340,13 +415,14 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
     }
 
     try {
+      const expenseDate = dateInput.value || new Date().toISOString().split('T')[0];
       const payload = {
         household_id: household.id,
-        title: titleInput.value.trim().slice(0, 100), // 最大100文字に制限
+        title: titleInput.value.trim().slice(0, 100),
         amount: amount,
         category: (catInput.value as CategoryType) || 'food',
         paid_by_name: payerInput.value || household.user1_name,
-        expense_date: dateInput.value || new Date().toISOString().split('T')[0],
+        expense_date: expenseDate,
         is_settled: false,
       };
 
@@ -357,6 +433,10 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
         LocalStorageService.addExpense(payload);
         expenses = LocalStorageService.getExpenses();
       }
+
+      // 入力した日付の月に自動移動して確認できるようにする
+      const enteredYM = expenseDate.substring(0, 7);
+      selectedYearMonth = enteredYM;
 
       closeModal();
       renderApp();
@@ -373,7 +453,7 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
     }
   });
 
-  // 5. 支出削除ボタン
+  // 6. 支出削除ボタン
   document.querySelectorAll<HTMLButtonElement>('[data-delete-id]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.deleteId;
@@ -392,10 +472,10 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
     });
   });
 
-  // 6. LINE請求文面コピー
+  // 7. LINE請求文面コピー
   const btnCopyLine = document.getElementById('btn-copy-line');
   btnCopyLine?.addEventListener('click', async () => {
-    const text = generateLineSettlementText(settlementSummary, household, monthText);
+    const text = generateLineSettlementText(settlementSummary, household, selectedMonthLabel);
     try {
       await navigator.clipboard.writeText(text);
       showToast('LINE請求文をクリップボードにコピーしました！ 📋');
@@ -405,36 +485,35 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
     }
   });
 
-  // 7. 精算完了ボタン
+  // 8. 精算完了ボタン (選択月の未精算を精算済みにする)
   const btnSettleAll = document.getElementById('btn-settle-all');
   btnSettleAll?.addEventListener('click', async () => {
-    const unsettledCount = expenses.filter((e) => !e.is_settled).length;
-    if (unsettledCount === 0) {
-      showToast('未精算の支出はありません', 'info');
+    if (unsettledCountInMonth === 0) {
+      showToast(`${selectedMonthLabel}に未精算の支出はありません`, 'info');
       return;
     }
 
-    if (confirm(`未精算の支出（${unsettledCount}件）をすべて精算済みにしますか？`)) {
+    if (confirm(`${selectedMonthLabel}の未精算支出（${unsettledCountInMonth}件）をすべて精算済みにしますか？`)) {
       if (isCloudSyncActive) {
-        await SupabaseService.settleAll(household.id);
+        await SupabaseService.settleMonth(household.id, selectedYearMonth);
         expenses = await SupabaseService.getExpenses();
       } else {
-        LocalStorageService.settleAll();
+        LocalStorageService.settleMonth(selectedYearMonth);
         expenses = LocalStorageService.getExpenses();
       }
       renderApp();
-      showToast('今月の精算を完了しました！✨');
+      showToast(`${selectedMonthLabel}の精算を完了しました！✨`);
     }
   });
 
-  // 8. 支出リスト表示切替（未精算のみ / すべて）
+  // 9. 支出リスト表示切替（未精算のみ / すべて）
   const btnToggleShowAll = document.getElementById('btn-toggle-show-all');
   btnToggleShowAll?.addEventListener('click', () => {
     showAllExpenses = !showAllExpenses;
     renderApp();
   });
 
-  // 9. 設定モーダル開閉
+  // 10. 設定モーダル開閉
   const btnOpenSettings = document.getElementById('btn-open-settings');
   const btnCloseSettings = document.getElementById('btn-close-settings');
   const settingsModalOverlay = document.getElementById('settings-modal-overlay');
@@ -470,7 +549,7 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
   user1Input?.addEventListener('input', updateRatioDisplay);
   user2Input?.addEventListener('input', updateRatioDisplay);
 
-  // 10. 世帯設定フォーム保存
+  // 11. 世帯設定フォーム保存
   const formSettings = document.getElementById('form-settings') as HTMLFormElement;
   formSettings?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -496,7 +575,7 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
     showToast('世帯設定を保存しました ⚙️');
   });
 
-  // 11. 世帯招待コードのコピー
+  // 12. 世帯招待コードのコピー
   const btnCopyJoinCode = document.getElementById('btn-copy-join-code');
   btnCopyJoinCode?.addEventListener('click', async () => {
     const code = btnCopyJoinCode.dataset.code;
@@ -509,7 +588,7 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
     }
   });
 
-  // 12. 世帯参加（招待コード入力）
+  // 13. 世帯参加（招待コード入力）
   const btnJoinHousehold = document.getElementById('btn-join-household');
   const inputJoinCode = document.getElementById('input-join-code') as HTMLInputElement;
   btnJoinHousehold?.addEventListener('click', async () => {
@@ -536,7 +615,7 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
     }
   });
 
-  // 13. Supabase設定保存フォーム
+  // 14. Supabase設定保存フォーム
   const formSupabase = document.getElementById('form-supabase-config') as HTMLFormElement;
   formSupabase?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -560,7 +639,7 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
     }
   });
 
-  // 14. Supabase接続解除
+  // 15. Supabase接続解除
   const btnDisconnect = document.getElementById('btn-disconnect-supabase');
   btnDisconnect?.addEventListener('click', () => {
     if (confirm('Supabaseとの連携を解除し、ローカルモードに戻しますか？')) {
@@ -575,13 +654,14 @@ function attachEventListeners(settlementSummary: ReturnType<typeof calculateSett
     }
   });
 
-  // 15. ローカルデータリセット
+  // 16. ローカルデータリセット
   const btnResetData = document.getElementById('btn-reset-data');
   btnResetData?.addEventListener('click', () => {
     if (confirm('ローカルデータをサンプル状態にリセットしますか？')) {
       LocalStorageService.resetAll();
       household = LocalStorageService.getHousehold();
       expenses = LocalStorageService.getExpenses();
+      selectedYearMonth = getCurrentYearMonth();
       settingsModalOverlay?.classList.add('hidden');
       renderApp();
       showToast('サンプルデータに初期化しました');

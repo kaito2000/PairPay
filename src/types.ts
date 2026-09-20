@@ -57,3 +57,17 @@ export interface SettlementSummary {
   transferAmount: number; // 送金額 (0なら精算不要)
   statusText: string;
 }
+
+export interface DailyExpenseGroup {
+  date: string; // 'YYYY-MM-DD'
+  displayDate: string; // '9月18日 (金)'
+  totalAmount: number;
+  expenses: Expense[];
+}
+
+export interface MonthOption {
+  yearMonth: string; // '2026-09'
+  label: string; // '2026年9月'
+  count: number;
+}
+

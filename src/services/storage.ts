@@ -120,6 +120,16 @@ export class LocalStorageService {
     this.saveExpenses(expenses);
   }
 
+  static settleMonth(yearMonth: string): void {
+    const expenses = this.getExpenses().map((e) => {
+      if (e.expense_date.startsWith(yearMonth)) {
+        return { ...e, is_settled: true };
+      }
+      return e;
+    });
+    this.saveExpenses(expenses);
+  }
+
   static resetAll(): void {
     localStorage.removeItem(STORAGE_KEY_EXPENSES);
     localStorage.removeItem(STORAGE_KEY_HOUSEHOLD);

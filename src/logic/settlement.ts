@@ -85,3 +85,120 @@ export function generateLineSettlementText(
     `確認したら精算完了ボタンを押してね📱`,
   ].join('\n');
 }
+
+/**
+ * 現在の年月文字列を取得 (例: "2026-09")
+ */
+export function getCurrentYearMonth(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
+/**
+ * 年月文字列を表示用日本語に変換 (例: "2026-09" -> "2026年9月")
+ */
+export function formatYearMonth(yearMonth: string): string {
+  const [y, m] = yearMonth.split('-');
+  return `${parseInt(y, 10)}年${parseInt(m, 10)}月`;
+}
+
+/**
+ * 年月を安全に加減算する純粋関数 (月末バグ防止)
+ * @param yearMonth "YYYY-MM"
+ * @param delta +1 で翌月, -1 で前月
+ */
+export function shiftMonth(yearMonth: string, delta: number): string {
+  const [yStr, mStr] = yearMonth.split('-');
+  let year = parseInt(yStr, 10);
+  let month = parseInt(mStr, 10) + delta;
+
+  while (month > 12) {
+    month -= 12;
+    year += 1;
+  }
+  while (month < 1) {
+    month += 12;
+    year -= 1;
+  }
+
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+/**
+ * 指定された年月の支出のみを抽出
+ */
+export function filterExpensesByMonth(expenses: Expense[], yearMonth: string): Expense[] {
+  return expenses.filter((e) => e.expense_date.startsWith(yearMonth));
+}
+
+/**
+ * 支出リストを日付ごとにグループ化し、日付降順で返却
+ */
+export function groupExpensesByDate(expenses: Expense[]): {
+  date: string;
+  displayDate: string;
+  totalAmount: number;
+  expenses: Expense[];
+}[] {
+  const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+  const groupsMap = new Map<string, Expense[]>();
+
+  for (const exp of expenses) {
+    const list = groupsMap.get(exp.expense_date) || [];
+    list.push(exp);
+    groupsMap.set(exp.expense_date, list);
+  }
+
+  // 日付の降順でソート
+  const sortedDates = Array.from(groupsMap.keys()).sort((a, b) => b.localeCompare(a));
+
+  return sortedDates.map((date) => {
+    const list = groupsMap.get(date)!;
+    const totalAmount = list.reduce((sum, e) => sum + e.amount, 0);
+
+    // 日付フォーマット: 2026-09-18 -> "9月18日 (金)"
+    const dateObj = new Date(`${date}T00:00:00`);
+    const m = dateObj.getMonth() + 1;
+    const d = dateObj.getDate();
+    const dayOfWeek = isNaN(dateObj.getTime()) ? '' : ` (${dayNames[dateObj.getDay()]})`;
+    const displayDate = `${m}月${d}日${dayOfWeek}`;
+
+    return {
+      date,
+      displayDate,
+      totalAmount,
+      expenses: list,
+    };
+  });
+}
+
+/**
+ * 登録されている支出から利用可能な年月リストを取得（現在月を必ず含む、降順）
+ */
+export function getAvailableMonths(
+  expenses: Expense[],
+  currentYearMonth: string
+): { yearMonth: string; label: string; count: number }[] {
+  const countMap = new Map<string, number>();
+
+  // 現在月をデフォルト登録
+  countMap.set(currentYearMonth, 0);
+
+  for (const exp of expenses) {
+    if (exp.expense_date && exp.expense_date.length >= 7) {
+      const ym = exp.expense_date.substring(0, 7);
+      countMap.set(ym, (countMap.get(ym) || 0) + 1);
+    }
+  }
+
+  const sortedYm = Array.from(countMap.keys()).sort((a, b) => b.localeCompare(a));
+
+  return sortedYm.map((ym) => ({
+    yearMonth: ym,
+    label: formatYearMonth(ym),
+    count: countMap.get(ym) || 0,
+  }));
+}
+

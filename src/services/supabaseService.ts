@@ -277,6 +277,28 @@ export class SupabaseService {
   }
 
   /**
+   * 特定の年月の未精算支出を精算済みに更新
+   */
+  static async settleMonth(householdId: string, yearMonth: string): Promise<boolean> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return false;
+
+    const startDate = `${yearMonth}-01`;
+    const endDate = `${yearMonth}-31`;
+
+    const { error } = await supabase
+      .from('expenses')
+      .update({ is_settled: true })
+      .eq('household_id', householdId)
+      .gte('expense_date', startDate)
+      .lte('expense_date', endDate)
+      .eq('is_settled', false);
+
+    return !error;
+  }
+
+
+  /**
    * リアルタイム変更を購読 (Supabase Realtime)
    */
   static subscribeToChanges(onChanged: () => void): void {

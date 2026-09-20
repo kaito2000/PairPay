@@ -1,10 +1,12 @@
-export function renderHeader(monthText: string, isCloudSync: boolean = false): string {
+export function renderHeader(isCloudSync: boolean = false): string {
   return `
-    <header class="sticky top-0 z-20 bg-[#fbfaf8]/90 backdrop-blur-md border-b border-[#ece8e1] px-4 py-3.5 flex items-center justify-between">
+    <header class="sticky top-0 z-20 bg-[#fbfaf8]/92 backdrop-blur-md border-b border-[#ece8e1] px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#52796f] to-[#74a892] flex items-center justify-center text-white font-extrabold shadow-sm shadow-[#52796f]/20 text-sm">
-          P
-        </div>
+        <img
+          src="./icon-192.png"
+          alt="PairPay Logo"
+          class="w-9 h-9 rounded-2xl object-cover shadow-soft border border-[#ece8e1] shrink-0"
+        />
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-base font-extrabold tracking-tight text-[#2d312e] leading-tight">PairPay</h1>
@@ -20,13 +22,11 @@ export function renderHeader(monthText: string, isCloudSync: boolean = false): s
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <span class="text-xs font-bold text-[#5c635e] bg-white px-3 py-1 rounded-full border border-[#e7e3dc] shadow-soft" id="current-month-badge">
-          ${monthText}
-        </span>
-        <button id="btn-open-settings" class="w-9 h-9 rounded-full flex items-center justify-center text-[#5c635e] hover:text-[#2d312e] hover:bg-white active:scale-95 transition-all shadow-soft" aria-label="設定">
+        <button id="btn-open-settings" class="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#5c635e] hover:text-[#2d312e] active:scale-95 transition-all shadow-soft border border-[#ece8e1] cursor-pointer" aria-label="設定">
           <i data-lucide="settings" class="w-4 h-4"></i>
         </button>
       </div>
     </header>
   `;
 }
+
