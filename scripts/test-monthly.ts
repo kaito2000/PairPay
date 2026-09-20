@@ -143,6 +143,13 @@ if (months[0].yearMonth !== '2026-10' || months[1].yearMonth !== '2026-09' || mo
 if (months[1].count !== 3) {
   throw new Error(`9月の件数集計期待値: 3, 実際: ${months[1].count}`);
 }
+
+// 支出0件の月を選択した場合でもリストに含まれ同期できることのテスト
+const monthsWithZeroMonth = getAvailableMonths(mockExpenses, '2026-09', '2026-07');
+if (!monthsWithZeroMonth.some((m) => m.yearMonth === '2026-07')) {
+  throw new Error(`支出0件の選択月(2026-07)がリストに含まれていません`);
+}
 console.log('  getAvailableMonths: ALL PASSED ✅\n');
 
 console.log('🎉 ALL MONTHLY LOGIC TESTS COMPLETED SUCCESSFULLY! 🎉');
+
