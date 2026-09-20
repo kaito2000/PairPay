@@ -6,7 +6,7 @@
 -- 1. 世帯テーブル (夫婦で1レコードを共有)
 create table if not exists public.households (
   id uuid primary key default gen_random_uuid(),
-  name text not null default '我が家',
+  name text not null default 'My Home', -- 世帯名（任意）
   join_code text unique not null default upper(substring(replace(gen_random_uuid()::text, '-', '') from 1 for 6)), -- 6桁の招待コード
   user1_name text not null default '夫',
   user2_name text not null default '妻',
