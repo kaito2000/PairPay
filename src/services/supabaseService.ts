@@ -107,6 +107,7 @@ export class SupabaseService {
 
   /**
    * 招待コード（join_code）で既存の世帯に参加する
+   * セキュリティ強化: 全件ダンプを防ぐRPC関数 join_household_by_code を優先使用
    */
   static async joinHouseholdByCode(code: string, displayName: string = '妻'): Promise<Household | null> {
     const supabase = getSupabaseClient();
@@ -116,8 +117,23 @@ export class SupabaseService {
     if (!userId) return null;
 
     const normalizedCode = code.trim().toUpperCase();
+    if (!normalizedCode) return null;
 
-    // 1. コードで世帯を検索
+    // 1. 安全なRPC関数を呼び出し (Security Definer)
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('join_household_by_code', {
+        p_code: normalizedCode,
+        p_display_name: displayName,
+      });
+
+      if (!rpcError && rpcData) {
+        return rpcData as Household;
+      }
+    } catch (e) {
+      console.warn('RPC join_household_by_code call failed, falling back', e);
+    }
+
+    // 2. フォールバック (旧スキーマ環境用)
     const { data: householdData, error: hError } = await supabase
       .from('households')
       .select('*')
@@ -129,7 +145,6 @@ export class SupabaseService {
       return null;
     }
 
-    // 2. ユーザーをこの世帯に紐付け
     const { error: pError } = await supabase
       .from('profiles')
       .upsert({
@@ -145,6 +160,7 @@ export class SupabaseService {
 
     return householdData as Household;
   }
+
 
   /**
    * 世帯情報を取得

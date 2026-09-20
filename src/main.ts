@@ -75,9 +75,12 @@ function showToast(message: string, type: 'success' | 'info' | 'error' = 'succes
       : 'bg-[#52796f] text-white border-[#679185]';
 
   toast.className = `${bgClass} px-4 py-3 rounded-2xl text-xs font-bold shadow-card border flex items-center gap-2 animate-slide-up pointer-events-auto transition-all`;
-  toast.innerHTML = `<span>${message}</span>`;
+  const span = document.createElement('span');
+  span.textContent = message;
+  toast.appendChild(span);
 
   container.appendChild(toast);
+
 
   setTimeout(() => {
     toast.classList.add('opacity-0', 'translate-y-2');
