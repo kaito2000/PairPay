@@ -576,7 +576,12 @@ function attachEventListeners(
   // 5. 支出フォーム送信
   const formExpense = document.getElementById('form-expense') as HTMLFormElement;
   const btnSubmitExpense = document.getElementById('btn-submit-expense') as HTMLButtonElement;
+  const btnHeaderSave = document.getElementById('btn-header-save-expense');
   let isSubmitting = false;
+
+  btnHeaderSave?.addEventListener('click', () => {
+    formExpense?.requestSubmit();
+  });
 
   formExpense?.addEventListener('submit', async (e) => {
     e.preventDefault();

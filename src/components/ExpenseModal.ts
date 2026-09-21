@@ -14,22 +14,35 @@ export function renderExpenseModal(household: Household): string {
 
     <!-- モーダル背景オーバーレイ -->
     <div id="expense-modal-overlay" class="fixed inset-0 bg-[#1e2320]/60 backdrop-blur-xs z-40 hidden animate-fade-in transition-opacity">
-      <!-- ボトムシートコンテナ -->
-      <div id="expense-modal-sheet" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#ffffff] rounded-t-[32px] shadow-2xl p-5 z-50 animate-slide-up max-h-[92vh] overflow-y-auto no-scrollbar border-t border-[#eeebe4]">
+      <!-- ボトムシートコンテナ (flexレイアウトで保存ボタンを常に画面下部に固定) -->
+      <div id="expense-modal-sheet" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#ffffff] rounded-t-[32px] shadow-2xl p-5 pb-4 z-50 animate-slide-up max-h-[92vh] flex flex-col overflow-hidden border-t border-[#eeebe4]">
         
-        <!-- ヘッダー (タイトル & クローズボタン) -->
-        <div class="flex items-center justify-between mb-2.5">
+        <!-- ヘッダー (タイトル & 保存ボタン & クローズボタン) -->
+        <div class="flex items-center justify-between mb-3 shrink-0">
           <div class="flex items-center gap-2">
             <div class="w-2 h-2 rounded-full bg-[#52796f]"></div>
             <h3 id="modal-expense-title" class="text-sm font-extrabold text-[#2d312e]">支出を記録する</h3>
           </div>
-          <button type="button" id="btn-close-modal" class="w-8 h-8 rounded-full flex items-center justify-center text-[#999f9a] hover:text-[#2d312e] hover:bg-[#f5f2eb] transition-all cursor-pointer">
-            <i data-lucide="x" class="w-4 h-4"></i>
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button
+              type="button"
+              id="btn-header-save-expense"
+              class="px-3 py-1.5 rounded-xl bg-[#edf4ee] hover:bg-[#dfece1] active:scale-95 text-[#426b42] font-black text-xs transition-all border border-[#c8decb] flex items-center gap-1 cursor-pointer shadow-2xs"
+            >
+              <i data-lucide="check" class="w-3.5 h-3.5 pointer-events-none"></i>
+              <span>保存</span>
+            </button>
+            <button type="button" id="btn-close-modal" class="w-8 h-8 rounded-full flex items-center justify-center text-[#999f9a] hover:text-[#2d312e] hover:bg-[#f5f2eb] transition-all cursor-pointer">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
         </div>
 
-        <form id="form-expense" class="space-y-3.5">
+        <form id="form-expense" class="flex-1 flex flex-col min-h-0">
           <input type="hidden" id="input-expense-id" value="" />
+
+          <!-- スクロール可能入力エリア -->
+          <div class="flex-1 overflow-y-auto no-scrollbar space-y-3.5 pr-0.5 pb-2">
 
           <!-- 1. 金額ディスプレイ & クイック加算 -->
           <div class="bg-[#fbfaf8] rounded-2xl p-4 border border-[#eeebe4] text-center shadow-inner relative">
@@ -196,16 +209,19 @@ export function renderExpenseModal(household: Household): string {
               </button>
             </div>
           </div>
+          </div>
 
-          <!-- 6. 登録・保存ボタン -->
-          <button
-            type="submit"
-            id="btn-submit-expense"
-            class="w-full py-4 px-4 rounded-[22px] bg-gradient-to-r from-[#52796f] to-[#3d5a53] hover:from-[#486b62] hover:to-[#354f49] active:scale-[0.98] text-white font-extrabold text-sm shadow-floating flex items-center justify-center gap-2 transition-all cursor-pointer"
-          >
-            <i data-lucide="check" class="w-4 h-4"></i>
-            <span id="btn-submit-expense-text">この内容で記録する</span>
-          </button>
+          <!-- 6. 登録・保存ボタン (常に画面下部に固定表示され、スクロール不要) -->
+          <div class="shrink-0 pt-3 bg-white border-t border-[#eeebe4]/80 mt-auto">
+            <button
+              type="submit"
+              id="btn-submit-expense"
+              class="w-full py-3.5 px-4 rounded-[20px] bg-gradient-to-r from-[#52796f] to-[#3d5a53] hover:from-[#486b62] hover:to-[#354f49] active:scale-[0.98] text-white font-extrabold text-sm shadow-floating flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <i data-lucide="check" class="w-4 h-4"></i>
+              <span id="btn-submit-expense-text">この内容で記録する</span>
+            </button>
+          </div>
         </form>
       </div>
     </div>
