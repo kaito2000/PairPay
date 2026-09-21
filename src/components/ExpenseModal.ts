@@ -81,6 +81,49 @@ export function renderExpenseModal(household: Household): string {
             <input type="hidden" id="input-payer" value="${household.user1_name}" />
           </div>
 
+          <!-- 2-2. 負担方法 (個別負担設定) -->
+          <div>
+            <div class="flex items-center justify-between text-[11px] font-bold text-[#808781] mb-1.5 ml-1">
+              <span>負担の分け方</span>
+              <span id="label-selected-split" class="text-[10px] text-[#52796f] font-semibold">基本比率 (${household.ratio_user1}:${household.ratio_user2})</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1 bg-[#f4f1ea] p-1 rounded-2xl border border-[#ece8e1]">
+              <button
+                type="button"
+                data-split="ratio"
+                class="split-btn py-2 px-1 rounded-xl text-[11px] font-extrabold transition-all bg-white text-[#426b42] shadow-xs flex flex-col items-center justify-center cursor-pointer"
+              >
+                <span>基本比率</span>
+                <span class="text-[9px] font-mono opacity-80">${household.ratio_user1}:${household.ratio_user2}</span>
+              </button>
+              <button
+                type="button"
+                data-split="equal"
+                class="split-btn py-2 px-1 rounded-xl text-[11px] font-bold transition-all text-[#8a857b] hover:text-[#2d312e] flex flex-col items-center justify-center cursor-pointer"
+              >
+                <span>等分</span>
+                <span class="text-[9px] font-mono opacity-80">50:50</span>
+              </button>
+              <button
+                type="button"
+                data-split="user1_full"
+                class="split-btn py-2 px-1 rounded-xl text-[11px] font-bold transition-all text-[#8a857b] hover:text-[#2d312e] flex flex-col items-center justify-center cursor-pointer truncate"
+              >
+                <span class="truncate">${household.user1_name}</span>
+                <span class="text-[9px] opacity-80">全額</span>
+              </button>
+              <button
+                type="button"
+                data-split="user2_full"
+                class="split-btn py-2 px-1 rounded-xl text-[11px] font-bold transition-all text-[#8a857b] hover:text-[#2d312e] flex flex-col items-center justify-center cursor-pointer truncate"
+              >
+                <span class="truncate">${household.user2_name}</span>
+                <span class="text-[9px] opacity-80">全額</span>
+              </button>
+            </div>
+            <input type="hidden" id="input-split-type" value="ratio" />
+          </div>
+
           <!-- 3. カテゴリ選択 (くすみパステルの丸型チップ) -->
           <div>
             <div class="text-[11px] font-bold text-[#808781] mb-1.5 ml-1">カテゴリ</div>

@@ -1,7 +1,9 @@
-import { Expense, Household } from '../types.ts';
+import { Expense, Household, RecurringTemplate, SettlementLog } from '../types.ts';
 
 const STORAGE_KEY_EXPENSES = 'pairpay_expenses_v1';
 const STORAGE_KEY_HOUSEHOLD = 'pairpay_household_v1';
+const STORAGE_KEY_SETTLEMENT_LOGS = 'pairpay_settlement_logs_v1';
+const STORAGE_KEY_RECURRING_TEMPLATES = 'pairpay_recurring_templates_v1';
 
 const DEFAULT_HOUSEHOLD: Household = {
   id: 'local-household-1',
@@ -146,8 +148,106 @@ export class LocalStorageService {
     this.saveExpenses(expenses);
   }
 
+  // ==========================================
+  // 精算履歴 (Settlement Logs)
+  // ==========================================
+  static getSettlementLogs(): SettlementLog[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY_SETTLEMENT_LOGS);
+      if (data) {
+        return JSON.parse(data);
+      }
+    } catch (e) {
+      console.error('Failed to load settlement logs', e);
+    }
+    return [];
+  }
+
+  static saveSettlementLogs(logs: SettlementLog[]): void {
+    localStorage.setItem(STORAGE_KEY_SETTLEMENT_LOGS, JSON.stringify(logs));
+  }
+
+  static addSettlementLog(logData: Omit<SettlementLog, 'id' | 'created_at'>): SettlementLog {
+    const logs = this.getSettlementLogs();
+    const newLog: SettlementLog = {
+      ...logData,
+      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      created_at: new Date().toISOString(),
+    };
+    logs.unshift(newLog);
+    this.saveSettlementLogs(logs);
+    return newLog;
+  }
+
+  static deleteSettlementLog(id: string): void {
+    const logs = this.getSettlementLogs().filter((l) => l.id !== id);
+    this.saveSettlementLogs(logs);
+  }
+
+  // ==========================================
+  // 固定費・定期支出テンプレート (Recurring Templates)
+  // ==========================================
+  static getRecurringTemplates(): RecurringTemplate[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY_RECURRING_TEMPLATES);
+      if (data) {
+        return JSON.parse(data);
+      }
+    } catch (e) {
+      console.error('Failed to load recurring templates', e);
+    }
+    // デフォルトの固定費サンプル
+    const defaultTemplates: RecurringTemplate[] = [
+      {
+        id: 'rec-1',
+        title: '家賃',
+        amount: 110000,
+        category: 'utility',
+        paid_by_name: '夫',
+        split_type: 'ratio',
+        day_of_month: 25,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 'rec-2',
+        title: 'Wi-Fi・ネット通信費',
+        amount: 4800,
+        category: 'utility',
+        paid_by_name: '妻',
+        split_type: 'equal',
+        day_of_month: 25,
+        created_at: new Date().toISOString(),
+      },
+    ];
+    this.saveRecurringTemplates(defaultTemplates);
+    return defaultTemplates;
+  }
+
+  static saveRecurringTemplates(templates: RecurringTemplate[]): void {
+    localStorage.setItem(STORAGE_KEY_RECURRING_TEMPLATES, JSON.stringify(templates));
+  }
+
+  static addRecurringTemplate(templateData: Omit<RecurringTemplate, 'id' | 'created_at'>): RecurringTemplate {
+    const templates = this.getRecurringTemplates();
+    const newTemplate: RecurringTemplate = {
+      ...templateData,
+      id: 'rec-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      created_at: new Date().toISOString(),
+    };
+    templates.push(newTemplate);
+    this.saveRecurringTemplates(templates);
+    return newTemplate;
+  }
+
+  static deleteRecurringTemplate(id: string): void {
+    const templates = this.getRecurringTemplates().filter((t) => t.id !== id);
+    this.saveRecurringTemplates(templates);
+  }
+
   static resetAll(): void {
     localStorage.removeItem(STORAGE_KEY_EXPENSES);
     localStorage.removeItem(STORAGE_KEY_HOUSEHOLD);
+    localStorage.removeItem(STORAGE_KEY_SETTLEMENT_LOGS);
+    localStorage.removeItem(STORAGE_KEY_RECURRING_TEMPLATES);
   }
 }

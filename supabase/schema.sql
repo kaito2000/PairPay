@@ -204,3 +204,86 @@ begin
 exception when others then
   null; -- すでに登録済みの場合は無視
 end $$;
+
+-- ==============================================================================
+-- 4. 支出個別負担 (split_type) カラムの追加
+-- ==============================================================================
+alter table public.expenses
+add column if not exists split_type text not null default 'ratio';
+
+-- ==============================================================================
+-- 5. 精算完了ログテーブル (settlement_logs)
+-- ==============================================================================
+create table if not exists public.settlement_logs (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  year_month text not null, -- 'YYYY-MM'
+  settled_at timestamp with time zone not null default now(),
+  sender_name text not null,
+  receiver_name text not null,
+  amount integer not null check (amount >= 0),
+  total_amount integer not null default 0,
+  expense_count integer not null default 0,
+  created_at timestamp with time zone default now()
+);
+
+create index if not exists idx_settlement_logs_household on public.settlement_logs(household_id, settled_at desc);
+
+alter table public.settlement_logs enable row level security;
+
+drop policy if exists "Users can view settlement logs in same household" on public.settlement_logs;
+create policy "Users can view settlement logs in same household"
+on public.settlement_logs for select
+using (
+  household_id in (select household_id from public.profiles where id = auth.uid())
+);
+
+drop policy if exists "Users can insert settlement logs in same household" on public.settlement_logs;
+create policy "Users can insert settlement logs in same household"
+on public.settlement_logs for insert
+with check (
+  household_id in (select household_id from public.profiles where id = auth.uid())
+);
+
+drop policy if exists "Users can delete settlement logs in same household" on public.settlement_logs;
+create policy "Users can delete settlement logs in same household"
+on public.settlement_logs for delete
+using (
+  household_id in (select household_id from public.profiles where id = auth.uid())
+);
+
+-- ==============================================================================
+-- 6. 固定費・定期支出テンプレートテーブル (recurring_templates)
+-- ==============================================================================
+create table if not exists public.recurring_templates (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  title text not null,
+  amount integer not null check (amount > 0),
+  category text not null check (category in ('food', 'daily', 'utility', 'dining', 'special', 'other')),
+  paid_by_name text not null,
+  split_type text not null default 'ratio',
+  day_of_month integer not null default 1 check (day_of_month between 1 and 28),
+  created_at timestamp with time zone default now()
+);
+
+create index if not exists idx_recurring_templates_household on public.recurring_templates(household_id);
+
+alter table public.recurring_templates enable row level security;
+
+drop policy if exists "Users can view recurring templates in same household" on public.recurring_templates;
+create policy "Users can view recurring templates in same household"
+on public.recurring_templates for select
+using (
+  household_id in (select household_id from public.profiles where id = auth.uid())
+);
+
+drop policy if exists "Users can manage recurring templates in same household" on public.recurring_templates;
+create policy "Users can manage recurring templates in same household"
+on public.recurring_templates for all
+using (
+  household_id in (select household_id from public.profiles where id = auth.uid())
+)
+with check (
+  household_id in (select household_id from public.profiles where id = auth.uid())
+);

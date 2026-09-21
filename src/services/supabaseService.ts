@@ -1,6 +1,6 @@
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../supabase.ts';
-import { Expense, Household } from '../types.ts';
+import { Expense, Household, RecurringTemplate, SettlementLog } from '../types.ts';
 
 export class SupabaseService {
   private static realtimeChannel: RealtimeChannel | null = null;
@@ -282,19 +282,31 @@ export class SupabaseService {
     const supabase = getSupabaseClient();
     if (!supabase) return null;
 
-    const { data, error } = await supabase
+    const payload: any = {
+      household_id: expenseData.household_id,
+      title: expenseData.title,
+      amount: expenseData.amount,
+      category: expenseData.category,
+      paid_by_name: expenseData.paid_by_name,
+      expense_date: expenseData.expense_date,
+      is_settled: false,
+      split_type: expenseData.split_type || 'ratio',
+    };
+
+    let { data, error } = await supabase
       .from('expenses')
-      .insert({
-        household_id: expenseData.household_id,
-        title: expenseData.title,
-        amount: expenseData.amount,
-        category: expenseData.category,
-        paid_by_name: expenseData.paid_by_name,
-        expense_date: expenseData.expense_date,
-        is_settled: false,
-      })
+      .insert(payload)
       .select()
       .single();
+
+    // スキーマ未更新環境で split_type カラムが存在しない場合のフォールバック
+    if (error && error.message.includes('split_type')) {
+      console.warn('split_type column might not exist, retrying without split_type');
+      delete payload.split_type;
+      const retryResult = await supabase.from('expenses').insert(payload).select().single();
+      data = retryResult.data;
+      error = retryResult.error;
+    }
 
     if (error) {
       console.error('Failed to add expense', error);
@@ -326,17 +338,29 @@ export class SupabaseService {
     const supabase = getSupabaseClient();
     if (!supabase) return false;
 
-    const { error } = await supabase
+    const updatePayload: any = {
+      title: expense.title,
+      amount: expense.amount,
+      category: expense.category,
+      paid_by_name: expense.paid_by_name,
+      expense_date: expense.expense_date,
+      is_settled: expense.is_settled,
+      split_type: expense.split_type || 'ratio',
+    };
+
+    let { error } = await supabase
       .from('expenses')
-      .update({
-        title: expense.title,
-        amount: expense.amount,
-        category: expense.category,
-        paid_by_name: expense.paid_by_name,
-        expense_date: expense.expense_date,
-        is_settled: expense.is_settled,
-      })
+      .update(updatePayload)
       .eq('id', expense.id);
+
+    if (error && error.message.includes('split_type')) {
+      delete updatePayload.split_type;
+      const retryResult = await supabase
+        .from('expenses')
+        .update(updatePayload)
+        .eq('id', expense.id);
+      error = retryResult.error;
+    }
 
     if (error) {
       console.error('Failed to update expense', error);
@@ -450,6 +474,140 @@ export class SupabaseService {
         supabase.removeChannel(this.realtimeChannel);
       }
       this.realtimeChannel = null;
+    }
+  }
+
+  // ==========================================
+  // 精算履歴 (Settlement Logs)
+  // ==========================================
+  static async getSettlementLogs(): Promise<SettlementLog[]> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return [];
+
+    const profile = await this.getCurrentProfile();
+    if (!profile || !profile.householdId) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('settlement_logs')
+        .select('*')
+        .eq('household_id', profile.householdId)
+        .order('settled_at', { ascending: false });
+
+      if (error) {
+        console.warn('Failed to fetch settlement logs from Supabase (table might not exist yet)', error);
+        return [];
+      }
+      return (data || []) as SettlementLog[];
+    } catch (e) {
+      console.warn('Error fetching settlement logs', e);
+      return [];
+    }
+  }
+
+  static async addSettlementLog(
+    logData: Omit<SettlementLog, 'id' | 'created_at'>
+  ): Promise<SettlementLog | null> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('settlement_logs')
+        .insert({
+          household_id: logData.household_id,
+          year_month: logData.year_month,
+          settled_at: logData.settled_at,
+          sender_name: logData.sender_name,
+          receiver_name: logData.receiver_name,
+          amount: logData.amount,
+          total_amount: logData.total_amount,
+          expense_count: logData.expense_count,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Failed to add settlement log to Supabase', error);
+        return null;
+      }
+      return data as SettlementLog;
+    } catch (e) {
+      console.warn('Error adding settlement log to Supabase', e);
+      return null;
+    }
+  }
+
+  // ==========================================
+  // 固定費テンプレート (Recurring Templates)
+  // ==========================================
+  static async getRecurringTemplates(): Promise<RecurringTemplate[]> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return [];
+
+    const profile = await this.getCurrentProfile();
+    if (!profile || !profile.householdId) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('recurring_templates')
+        .select('*')
+        .eq('household_id', profile.householdId)
+        .order('day_of_month', { ascending: true });
+
+      if (error) {
+        console.warn('Failed to fetch recurring templates (table might not exist yet)', error);
+        return [];
+      }
+      return (data || []) as RecurringTemplate[];
+    } catch (e) {
+      console.warn('Error fetching recurring templates', e);
+      return [];
+    }
+  }
+
+  static async addRecurringTemplate(
+    template: Omit<RecurringTemplate, 'id' | 'created_at'>
+  ): Promise<RecurringTemplate | null> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('recurring_templates')
+        .insert({
+          household_id: template.household_id,
+          title: template.title,
+          amount: template.amount,
+          category: template.category,
+          paid_by_name: template.paid_by_name,
+          split_type: template.split_type || 'ratio',
+          day_of_month: template.day_of_month || 1,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Failed to add recurring template', error);
+        return null;
+      }
+      return data as RecurringTemplate;
+    } catch (e) {
+      console.warn('Error adding recurring template', e);
+      return null;
+    }
+  }
+
+  static async deleteRecurringTemplate(id: string): Promise<boolean> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return false;
+
+    try {
+      const { error } = await supabase.from('recurring_templates').delete().eq('id', id);
+      return !error;
+    } catch (e) {
+      console.warn('Error deleting recurring template', e);
+      return false;
     }
   }
 }

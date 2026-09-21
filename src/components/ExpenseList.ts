@@ -111,10 +111,19 @@ export function renderExpenseList(
                                 <div class="text-xs font-black text-[#2d312e]">
                                   ¥${expense.amount.toLocaleString()}
                                 </div>
-                                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-lg border ${badgeColor}">
-                                  ${safePaidBy}
-                                </span>
-                              </div>
+                                  <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-lg border ${badgeColor}">
+                                    ${safePaidBy}
+                                  </span>
+                                  ${
+                                    expense.split_type === 'user1_full'
+                                      ? `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-[#e8f0fe] text-[#1967d2] border border-[#d2e3fc] ml-0.5">${escapeHtml(household.user1_name)}全額</span>`
+                                      : expense.split_type === 'user2_full'
+                                      ? `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-[#fce8e6] text-[#c5221f] border border-[#fad2cf] ml-0.5">${escapeHtml(household.user2_name)}全額</span>`
+                                      : expense.split_type === 'equal'
+                                      ? `<span class="text-[9px] font-bold px-1 py-0.5 rounded bg-[#e6f4ea] text-[#137333] border border-[#ceead6] ml-0.5">等分</span>`
+                                      : ''
+                                  }
+                                </div>
                               <button
                                 data-edit-id="${expense.id}"
                                 class="w-7 h-7 rounded-xl flex items-center justify-center text-[#808781] hover:text-[#52796f] hover:bg-[#edf4ee] active:scale-90 transition-all cursor-pointer"

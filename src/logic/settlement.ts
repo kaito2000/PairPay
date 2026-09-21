@@ -20,9 +20,27 @@ export function calculateSettlement(expenses: Expense[], household: Household): 
   // 負担比率 (0.0 〜 1.0)
   const ratio1 = household.ratio_user1 / 100;
 
-  // 1円単位の端数ズレを防ぐため、片方を四捨五入し、もう片方は差分で算出
-  const user1ShouldPay = Math.round(totalAmount * ratio1);
-  const user2ShouldPay = totalAmount - user1ShouldPay;
+  // 各支出ごとの負担割合（個別負担設定対応）を累積
+  let user1ShouldPay = 0;
+  let user2ShouldPay = 0;
+
+  for (const exp of unsettledExpenses) {
+    const splitType = exp.split_type || 'ratio';
+    if (splitType === 'user1_full') {
+      user1ShouldPay += exp.amount;
+    } else if (splitType === 'user2_full') {
+      user2ShouldPay += exp.amount;
+    } else if (splitType === 'equal') {
+      const u1 = Math.round(exp.amount / 2);
+      user1ShouldPay += u1;
+      user2ShouldPay += exp.amount - u1;
+    } else {
+      // ratio: 世帯の基本比率
+      const u1 = Math.round(exp.amount * ratio1);
+      user1ShouldPay += u1;
+      user2ShouldPay += exp.amount - u1;
+    }
+  }
 
   // 夫（user1）の立替差額 = 実際に払った額 - 負担すべき額
   const deltaUser1 = user1Total - user1ShouldPay;

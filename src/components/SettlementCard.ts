@@ -30,9 +30,19 @@ export function renderSettlementCard(
           <i data-lucide="calculator" class="w-3.5 h-3.5"></i>
           <span>${selectedMonthLabel}の精算</span>
         </span>
-        <span class="text-[11px] text-[#e8f0e6] font-semibold bg-white/10 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-white/15">
-          負担比率 ${household.ratio_user1}:${household.ratio_user2}
-        </span>
+        <div class="flex items-center gap-1.5">
+          <span class="text-[11px] text-[#e8f0e6] font-semibold bg-white/10 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-white/15">
+            負担比率 ${household.ratio_user1}:${household.ratio_user2}
+          </span>
+          <button
+            type="button"
+            id="btn-open-settlement-history"
+            class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-[#e8f0e6] transition-all cursor-pointer border border-white/15 shadow-xs"
+            title="精算履歴を見る"
+          >
+            <i data-lucide="history" class="w-3.5 h-3.5 pointer-events-none"></i>
+          </button>
+        </div>
       </div>
 
       <!-- 立替内訳 -->

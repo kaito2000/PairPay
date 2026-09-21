@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pairpay-v0.2.0';
+const CACHE_NAME = 'pairpay-v0.3.0';
 
 // プリキャッシュするコアアセット (相対パス)
 const STATIC_ASSETS = [

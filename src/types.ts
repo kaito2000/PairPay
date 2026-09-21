@@ -17,6 +17,8 @@ export const CATEGORIES: Record<CategoryType, CategoryInfo> = {
   other: { id: 'other', label: 'その他', icon: 'more-horizontal', color: '#737a74', bgColor: 'bg-[#f2f4f2] text-[#4f5550] border-[#d4d9d4]' },
 };
 
+export type SplitType = 'ratio' | 'equal' | 'user1_full' | 'user2_full';
+
 export interface Expense {
   id: string;
   household_id: string;
@@ -26,7 +28,49 @@ export interface Expense {
   paid_by_name: string; // '夫' または '妻'
   expense_date: string; // 'YYYY-MM-DD'
   is_settled: boolean;
+  split_type?: SplitType; // デフォルト: 'ratio'
   created_at: string;
+}
+
+export interface SettlementLog {
+  id: string;
+  household_id: string;
+  year_month: string; // '2026-09'
+  settled_at: string; // ISO 8601
+  sender_name: string; // 送金者
+  receiver_name: string; // 受取者
+  amount: number; // 精算送金額
+  total_amount: number; // 対象月の総支出額
+  expense_count: number; // 対象支出件数
+  created_at?: string;
+}
+
+export interface RecurringTemplate {
+  id: string;
+  household_id?: string;
+  title: string;
+  amount: number;
+  category: CategoryType;
+  paid_by_name: string;
+  split_type: SplitType;
+  day_of_month: number; // 毎月の目安日 (1〜28)
+  created_at?: string;
+}
+
+export type SyncQueueAction =
+  | 'create_expense'
+  | 'update_expense'
+  | 'delete_expense'
+  | 'settle_month'
+  | 'add_settlement_log'
+  | 'save_recurring'
+  | 'delete_recurring';
+
+export interface SyncQueueItem {
+  id: string;
+  action: SyncQueueAction;
+  payload: any;
+  timestamp: number;
 }
 
 export interface Household {

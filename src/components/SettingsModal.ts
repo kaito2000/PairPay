@@ -5,7 +5,8 @@ import { APP_VERSION } from '../version.ts';
 export function renderSettingsModal(
   household: Household,
   supabaseConfig: SupabaseConfig | null,
-  isCloudSync: boolean
+  isCloudSync: boolean,
+  selectedYearMonth: string = ''
 ): string {
   const safeUser1 = escapeHtml(household.user1_name);
   const safeUser2 = escapeHtml(household.user2_name);
@@ -224,7 +225,60 @@ export function renderSettingsModal(
             </form>
           </div>
 
-          <!-- 4. アプリ情報 & 手動更新 -->
+          <!-- 4. 固定費・定期支出 -->
+          <div class="space-y-2 bg-[#fbfaf8] p-3.5 rounded-2xl border border-[#eeebe4]">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-[#4a504b] flex items-center gap-1.5">
+                <i data-lucide="repeat" class="w-3.5 h-3.5 text-[#52796f]"></i>
+                <span>固定費・定期支出</span>
+              </span>
+            </div>
+            <p class="text-[11px] text-[#78716c] leading-relaxed">
+              家賃や光熱費・Wi-Fiなど、毎月決まって発生する支出をあらかじめ設定し、1タップで支出へ一括反映できます。
+            </p>
+            <button
+              type="button"
+              id="btn-open-recurring-modal"
+              class="w-full py-2.5 px-3 rounded-xl border border-[#c8decb] bg-white hover:bg-[#edf4ee] active:scale-98 text-[#426b42] text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <i data-lucide="repeat" class="w-3.5 h-3.5 text-[#52796f]"></i>
+              <span>固定費の管理＆今月へ一括反映</span>
+            </button>
+          </div>
+
+          <!-- 5. CSVデータ出力 -->
+          <div class="space-y-2 bg-[#fbfaf8] p-3.5 rounded-2xl border border-[#eeebe4]">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-[#4a504b] flex items-center gap-1.5">
+                <i data-lucide="file-text" class="w-3.5 h-3.5 text-[#52796f]"></i>
+                <span>CSVデータ出力</span>
+              </span>
+              <span class="text-[10px] text-[#808781]">Excel文字化け防止済</span>
+            </div>
+            <p class="text-[11px] text-[#78716c] leading-relaxed">
+              家計の振り返りや確定申告用に、支出データをCSVファイル形式でダウンロードできます。
+            </p>
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                id="btn-export-csv-month"
+                class="py-2.5 px-2.5 rounded-xl border border-[#ded9ce] bg-white hover:bg-[#f0ece5] active:scale-98 text-[#2d312e] text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer truncate"
+              >
+                <i data-lucide="download" class="w-3.5 h-3.5 text-[#52796f]"></i>
+                <span class="truncate">${selectedYearMonth || '選択月'}を出力</span>
+              </button>
+              <button
+                type="button"
+                id="btn-export-csv-all"
+                class="py-2.5 px-2.5 rounded-xl border border-[#ded9ce] bg-white hover:bg-[#f0ece5] active:scale-98 text-[#2d312e] text-xs font-bold transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer truncate"
+              >
+                <i data-lucide="download" class="w-3.5 h-3.5 text-[#52796f]"></i>
+                <span>全期間を出力</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 6. アプリ情報 & 手動更新 -->
           <div class="space-y-2.5 bg-[#fbfaf8] p-3.5 rounded-2xl border border-[#eeebe4]">
             <div class="flex items-center justify-between">
               <span class="text-xs font-bold text-[#4a504b] flex items-center gap-1.5">

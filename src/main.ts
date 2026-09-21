@@ -31,9 +31,15 @@ import {
   Calculator,
   Info,
   Pencil,
+  History,
+  Repeat,
+  FileText,
+  Download,
+  Inbox,
+  CalendarCheck,
 } from 'lucide';
 
-import { CategoryType, Expense, Household } from './types.ts';
+import { CategoryType, Expense, Household, RecurringTemplate, SettlementLog, SplitType } from './types.ts';
 import { LocalStorageService } from './services/storage.ts';
 import { SupabaseService } from './services/supabaseService.ts';
 import { getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig } from './supabase.ts';
@@ -53,13 +59,20 @@ import { renderCategoryBar } from './components/CategoryBar.ts';
 import { renderExpenseList } from './components/ExpenseList.ts';
 import { renderExpenseModal } from './components/ExpenseModal.ts';
 import { renderSettingsModal } from './components/SettingsModal.ts';
+import { renderSettlementHistoryModal } from './components/SettlementHistoryModal.ts';
+import { renderRecurringModal } from './components/RecurringModal.ts';
+import { downloadExpensesCsv } from './utils/csv.ts';
+import { SyncQueueService } from './services/syncQueue.ts';
 
 // アプリケーション状態
 let household: Household = LocalStorageService.getHousehold();
 let expenses: Expense[] = LocalStorageService.getExpenses();
+let settlementLogs: SettlementLog[] = LocalStorageService.getSettlementLogs();
+let recurringTemplates: RecurringTemplate[] = LocalStorageService.getRecurringTemplates();
 let selectedYearMonth: string = getCurrentYearMonth();
 let showAllExpenses = false;
 let isCloudSyncActive = false;
+let isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
 // トースト通知を表示する関数
 function showToast(message: string, type: 'success' | 'info' | 'error' = 'success') {
@@ -111,6 +124,22 @@ async function loadData(): Promise<{ success: boolean; errorMsg?: string }> {
       if (cloudHousehold) {
         household = cloudHousehold;
         expenses = await SupabaseService.getExpenses();
+
+        // 精算ログ & 固定費テンプレートのロード
+        const cloudLogs = await SupabaseService.getSettlementLogs();
+        if (cloudLogs && cloudLogs.length > 0) {
+          settlementLogs = cloudLogs;
+        } else {
+          settlementLogs = LocalStorageService.getSettlementLogs();
+        }
+
+        const cloudRecurring = await SupabaseService.getRecurringTemplates();
+        if (cloudRecurring && cloudRecurring.length > 0) {
+          recurringTemplates = cloudRecurring;
+        } else {
+          recurringTemplates = LocalStorageService.getRecurringTemplates();
+        }
+
         isCloudSyncActive = true;
 
         // リアルタイム変更購読の開始
@@ -118,6 +147,8 @@ async function loadData(): Promise<{ success: boolean; errorMsg?: string }> {
           const updatedHousehold = await SupabaseService.getHousehold();
           if (updatedHousehold) household = updatedHousehold;
           expenses = await SupabaseService.getExpenses();
+          const updatedLogs = await SupabaseService.getSettlementLogs();
+          if (updatedLogs && updatedLogs.length > 0) settlementLogs = updatedLogs;
           renderApp();
         });
         return { success: true };
@@ -134,6 +165,8 @@ async function loadData(): Promise<{ success: boolean; errorMsg?: string }> {
   isCloudSyncActive = false;
   household = LocalStorageService.getHousehold();
   expenses = LocalStorageService.getExpenses();
+  settlementLogs = LocalStorageService.getSettlementLogs();
+  recurringTemplates = LocalStorageService.getRecurringTemplates();
   return { success: true };
 }
 
@@ -156,7 +189,7 @@ function renderApp() {
   const supabaseConfig = getSupabaseConfig();
 
   app.innerHTML = `
-    ${renderHeader(isCloudSyncActive)}
+    ${renderHeader(isCloudSyncActive, SyncQueueService.getPendingCount(), isOnline)}
     <main class="p-4 space-y-3.5 flex-1">
       ${renderMonthNavigator(selectedYearMonth, currentYM, availableMonths)}
       ${renderSettlementCard(settlementSummary, household, selectedMonthLabel, unsettledInMonth.length, monthlyTotal)}
@@ -164,7 +197,9 @@ function renderApp() {
       ${renderExpenseList(monthlyExpenses, household, showAllExpenses, selectedMonthLabel)}
     </main>
     ${renderExpenseModal(household)}
-    ${renderSettingsModal(household, supabaseConfig, isCloudSyncActive)}
+    ${renderSettingsModal(household, supabaseConfig, isCloudSyncActive, selectedYearMonth)}
+    ${renderSettlementHistoryModal(settlementLogs)}
+    ${renderRecurringModal(recurringTemplates, household, selectedYearMonth)}
   `;
 
   // プルダウンの値を確実に選択中の月に設定（ブラウザキャッシュ対策）
@@ -208,6 +243,12 @@ function renderApp() {
       Calculator,
       Info,
       Pencil,
+      History,
+      Repeat,
+      FileText,
+      Download,
+      Inbox,
+      CalendarCheck,
     },
   });
 
@@ -279,9 +320,29 @@ function attachEventListeners(
     const dateInput = document.getElementById('input-date') as HTMLInputElement;
     const inputPayer = document.getElementById('input-payer') as HTMLInputElement;
     const inputCategory = document.getElementById('input-category') as HTMLInputElement;
+    const inputSplitType = document.getElementById('input-split-type') as HTMLInputElement;
+    const labelSelectedSplit = document.getElementById('label-selected-split');
+    const splitButtons = document.querySelectorAll<HTMLButtonElement>('.split-btn');
 
-    const payerButtons = document.querySelectorAll<HTMLButtonElement>('.payer-btn');
-    const catButtons = document.querySelectorAll<HTMLButtonElement>('.category-btn');
+    const updateSplitUI = (split: SplitType) => {
+      if (inputSplitType) inputSplitType.value = split;
+      if (labelSelectedSplit) {
+        if (split === 'equal') labelSelectedSplit.textContent = '等分 (50:50)';
+        else if (split === 'user1_full') labelSelectedSplit.textContent = `${household.user1_name}が全額`;
+        else if (split === 'user2_full') labelSelectedSplit.textContent = `${household.user2_name}が全額`;
+        else labelSelectedSplit.textContent = `基本比率 (${household.ratio_user1}:${household.ratio_user2})`;
+      }
+      splitButtons.forEach((b) => {
+        const match = b.dataset.split === split;
+        if (match) {
+          b.className =
+            'split-btn py-2 px-1 rounded-xl text-[11px] font-extrabold transition-all bg-white text-[#426b42] shadow-xs flex flex-col items-center justify-center cursor-pointer';
+        } else {
+          b.className =
+            'split-btn py-2 px-1 rounded-xl text-[11px] font-bold transition-all text-[#8a857b] hover:text-[#2d312e] flex flex-col items-center justify-center cursor-pointer truncate';
+        }
+      });
+    };
 
     if (expenseId) {
       // 編集モード
@@ -297,6 +358,8 @@ function attachEventListeners(
 
       if (titleInput) titleInput.value = exp.title || '';
       if (dateInput) dateInput.value = exp.expense_date;
+
+      updateSplitUI(exp.split_type || 'ratio');
 
       if (inputPayer) {
         inputPayer.value = exp.paid_by_name;
@@ -335,6 +398,8 @@ function attachEventListeners(
       currentAmountStr = '0';
       updateAmountDisplay();
       if (titleInput) titleInput.value = '';
+
+      updateSplitUI('ratio');
 
       if (dateInput) {
         const today = new Date().toISOString().split('T')[0];
@@ -480,6 +545,34 @@ function attachEventListeners(
     });
   });
 
+  // 4-2. 負担方法選択 (split_type)
+  const splitButtons = document.querySelectorAll<HTMLButtonElement>('.split-btn');
+  const inputSplitType = document.getElementById('input-split-type') as HTMLInputElement;
+  const labelSelectedSplit = document.getElementById('label-selected-split');
+
+  splitButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const split = (btn.dataset.split as SplitType) || 'ratio';
+      if (inputSplitType) inputSplitType.value = split;
+      if (labelSelectedSplit) {
+        if (split === 'equal') labelSelectedSplit.textContent = '等分 (50:50)';
+        else if (split === 'user1_full') labelSelectedSplit.textContent = `${household.user1_name}が全額`;
+        else if (split === 'user2_full') labelSelectedSplit.textContent = `${household.user2_name}が全額`;
+        else labelSelectedSplit.textContent = `基本比率 (${household.ratio_user1}:${household.ratio_user2})`;
+      }
+      splitButtons.forEach((b) => {
+        const match = b.dataset.split === split;
+        if (match) {
+          b.className =
+            'split-btn py-2 px-1 rounded-xl text-[11px] font-extrabold transition-all bg-white text-[#426b42] shadow-xs flex flex-col items-center justify-center cursor-pointer';
+        } else {
+          b.className =
+            'split-btn py-2 px-1 rounded-xl text-[11px] font-bold transition-all text-[#8a857b] hover:text-[#2d312e] flex flex-col items-center justify-center cursor-pointer truncate';
+        }
+      });
+    });
+  });
+
   // 5. 支出フォーム送信
   const formExpense = document.getElementById('form-expense') as HTMLFormElement;
   const btnSubmitExpense = document.getElementById('btn-submit-expense') as HTMLButtonElement;
@@ -495,6 +588,7 @@ function attachEventListeners(
     const catInput = document.getElementById('input-category') as HTMLInputElement;
     const titleInput = document.getElementById('input-title') as HTMLInputElement;
     const dateInput = document.getElementById('input-date') as HTMLInputElement;
+    const splitInput = document.getElementById('input-split-type') as HTMLInputElement;
 
     const amount = parseInt(amountInput.value, 10);
     if (isNaN(amount) || amount <= 0) {
@@ -516,6 +610,7 @@ function attachEventListeners(
     try {
       const expenseDate = dateInput.value || new Date().toISOString().split('T')[0];
       const inputExpenseId = (document.getElementById('input-expense-id') as HTMLInputElement)?.value;
+      const splitType = (splitInput?.value as SplitType) || 'ratio';
 
       if (inputExpenseId) {
         // 既存の支出を編集・更新
@@ -529,13 +624,24 @@ function attachEventListeners(
           paid_by_name: payerInput.value || household.user1_name,
           expense_date: expenseDate,
           is_settled: existing ? existing.is_settled : false,
+          split_type: splitType,
           created_at: existing ? existing.created_at : new Date().toISOString(),
         };
 
-        if (isCloudSyncActive) {
-          await SupabaseService.updateExpense(payload);
-          expenses = await SupabaseService.getExpenses();
+        if (isCloudSyncActive && isOnline) {
+          try {
+            await SupabaseService.updateExpense(payload);
+            expenses = await SupabaseService.getExpenses();
+          } catch (e) {
+            console.warn('Online update failed, enqueuing', e);
+            SyncQueueService.enqueue('update_expense', payload);
+            LocalStorageService.updateExpense(payload);
+            expenses = LocalStorageService.getExpenses();
+          }
         } else {
+          if (isCloudSyncActive) {
+            SyncQueueService.enqueue('update_expense', payload);
+          }
           LocalStorageService.updateExpense(payload);
           expenses = LocalStorageService.getExpenses();
         }
@@ -556,12 +662,29 @@ function attachEventListeners(
           paid_by_name: payerInput.value || household.user1_name,
           expense_date: expenseDate,
           is_settled: false,
+          split_type: splitType,
         };
 
-        if (isCloudSyncActive) {
-          await SupabaseService.addExpense(payload);
-          expenses = await SupabaseService.getExpenses();
+        if (isCloudSyncActive && isOnline) {
+          try {
+            const added = await SupabaseService.addExpense(payload);
+            if (added) {
+              expenses = await SupabaseService.getExpenses();
+            } else {
+              SyncQueueService.enqueue('create_expense', payload);
+              LocalStorageService.addExpense(payload);
+              expenses = LocalStorageService.getExpenses();
+            }
+          } catch (e) {
+            console.warn('Online add failed, enqueuing', e);
+            SyncQueueService.enqueue('create_expense', payload);
+            LocalStorageService.addExpense(payload);
+            expenses = LocalStorageService.getExpenses();
+          }
         } else {
+          if (isCloudSyncActive) {
+            SyncQueueService.enqueue('create_expense', payload);
+          }
           LocalStorageService.addExpense(payload);
           expenses = LocalStorageService.getExpenses();
         }
@@ -597,15 +720,24 @@ function attachEventListeners(
 
   // 6. 支出削除ボタン
   document.querySelectorAll<HTMLButtonElement>('[data-delete-id]').forEach((btn) => {
-
     btn.addEventListener('click', async () => {
       const id = btn.dataset.deleteId;
       if (!id) return;
       if (confirm('この支出を削除しますか？')) {
-        if (isCloudSyncActive) {
-          await SupabaseService.deleteExpense(id);
-          expenses = await SupabaseService.getExpenses();
+        if (isCloudSyncActive && isOnline) {
+          try {
+            await SupabaseService.deleteExpense(id);
+            expenses = await SupabaseService.getExpenses();
+          } catch (e) {
+            console.warn('Online delete failed, enqueuing', e);
+            SyncQueueService.enqueue('delete_expense', { id });
+            LocalStorageService.deleteExpense(id);
+            expenses = LocalStorageService.getExpenses();
+          }
         } else {
+          if (isCloudSyncActive) {
+            SyncQueueService.enqueue('delete_expense', { id });
+          }
           LocalStorageService.deleteExpense(id);
           expenses = LocalStorageService.getExpenses();
         }
@@ -628,7 +760,7 @@ function attachEventListeners(
     }
   });
 
-  // 8. 精算完了ボタン (選択月の未精算を精算済みにする)
+  // 8. 精算完了ボタン (選択月の未精算を精算済みにし、精算ログを記録)
   const btnSettleAll = document.getElementById('btn-settle-all');
   btnSettleAll?.addEventListener('click', async () => {
     if (unsettledCountInMonth === 0) {
@@ -637,15 +769,44 @@ function attachEventListeners(
     }
 
     if (confirm(`${selectedMonthLabel}の未精算支出（${unsettledCountInMonth}件）をすべて精算済みにしますか？`)) {
-      if (isCloudSyncActive) {
-        await SupabaseService.settleMonth(household.id, selectedYearMonth);
-        expenses = await SupabaseService.getExpenses();
+      const logData = {
+        household_id: household.id,
+        year_month: selectedYearMonth,
+        settled_at: new Date().toISOString(),
+        sender_name: settlementSummary.senderName || household.user2_name,
+        receiver_name: settlementSummary.receiverName || household.user1_name,
+        amount: settlementSummary.transferAmount,
+        total_amount: settlementSummary.totalAmount,
+        expense_count: unsettledCountInMonth,
+      };
+
+      if (isCloudSyncActive && isOnline) {
+        try {
+          await SupabaseService.settleMonth(household.id, selectedYearMonth);
+          await SupabaseService.addSettlementLog(logData);
+          expenses = await SupabaseService.getExpenses();
+          settlementLogs = await SupabaseService.getSettlementLogs();
+        } catch (e) {
+          console.warn('Online settle failed, enqueuing', e);
+          SyncQueueService.enqueue('settle_month', { householdId: household.id, yearMonth: selectedYearMonth });
+          SyncQueueService.enqueue('add_settlement_log', logData);
+          LocalStorageService.settleMonth(selectedYearMonth);
+          LocalStorageService.addSettlementLog(logData);
+          expenses = LocalStorageService.getExpenses();
+          settlementLogs = LocalStorageService.getSettlementLogs();
+        }
       } else {
+        if (isCloudSyncActive) {
+          SyncQueueService.enqueue('settle_month', { householdId: household.id, yearMonth: selectedYearMonth });
+          SyncQueueService.enqueue('add_settlement_log', logData);
+        }
         LocalStorageService.settleMonth(selectedYearMonth);
+        LocalStorageService.addSettlementLog(logData);
         expenses = LocalStorageService.getExpenses();
+        settlementLogs = LocalStorageService.getSettlementLogs();
       }
       renderApp();
-      showToast(`${selectedMonthLabel}の精算を完了しました！✨`);
+      showToast(`${selectedMonthLabel}の精算を完了＆履歴に記録しました！✨`);
     }
   });
 
@@ -888,10 +1049,261 @@ function attachEventListeners(
       }, 800);
     }
   });
+
+  // 18. 精算履歴モーダル開閉 & 削除
+  const btnOpenHistory = document.getElementById('btn-open-settlement-history');
+  const btnCloseHistory = document.getElementById('btn-close-settlement-history');
+  const historyModalOverlay = document.getElementById('settlement-history-modal-overlay');
+
+  btnOpenHistory?.addEventListener('click', () => {
+    historyModalOverlay?.classList.remove('hidden');
+  });
+
+  btnCloseHistory?.addEventListener('click', () => {
+    historyModalOverlay?.classList.add('hidden');
+  });
+
+  historyModalOverlay?.addEventListener('click', (e) => {
+    if (e.target === historyModalOverlay) historyModalOverlay.classList.add('hidden');
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('.btn-delete-log').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.deleteLogId;
+      if (!id) return;
+      if (confirm('この精算履歴を削除しますか？')) {
+        LocalStorageService.deleteSettlementLog(id);
+        settlementLogs = settlementLogs.filter((l) => l.id !== id);
+        renderApp();
+        showToast('精算履歴を削除しました');
+      }
+    });
+  });
+
+  // 19. 固定費モーダル開閉 & 追加 & 削除 & 一括反映
+  const btnOpenRecurring = document.getElementById('btn-open-recurring-modal');
+  const btnCloseRecurring = document.getElementById('btn-close-recurring');
+  const recurringModalOverlay = document.getElementById('recurring-modal-overlay');
+
+  btnOpenRecurring?.addEventListener('click', () => {
+    settingsModalOverlay?.classList.add('hidden');
+    recurringModalOverlay?.classList.remove('hidden');
+  });
+
+  btnCloseRecurring?.addEventListener('click', () => {
+    recurringModalOverlay?.classList.add('hidden');
+  });
+
+  recurringModalOverlay?.addEventListener('click', (e) => {
+    if (e.target === recurringModalOverlay) recurringModalOverlay.classList.add('hidden');
+  });
+
+  // 固定費追加フォーム
+  const formAddRecurring = document.getElementById('form-add-recurring') as HTMLFormElement;
+  formAddRecurring?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const titleInput = document.getElementById('recurring-title') as HTMLInputElement;
+    const amountInput = document.getElementById('recurring-amount') as HTMLInputElement;
+    const catSelect = document.getElementById('recurring-category') as HTMLSelectElement;
+    const payerSelect = document.getElementById('recurring-payer') as HTMLSelectElement;
+    const splitSelect = document.getElementById('recurring-split') as HTMLSelectElement;
+
+    const title = titleInput?.value.trim();
+    const amount = parseInt(amountInput?.value || '0', 10);
+    const category = (catSelect?.value as CategoryType) || 'utility';
+    const paidBy = payerSelect?.value || household.user1_name;
+    const splitType = (splitSelect?.value as SplitType) || 'ratio';
+
+    if (!title || isNaN(amount) || amount <= 0) {
+      showToast('正しい固定費の名称と金額を入力してください', 'error');
+      return;
+    }
+
+    const newTemplate = {
+      household_id: household.id,
+      title,
+      amount,
+      category,
+      paid_by_name: paidBy,
+      split_type: splitType,
+      day_of_month: 1,
+    };
+
+    if (isCloudSyncActive && isOnline) {
+      try {
+        const added = await SupabaseService.addRecurringTemplate(newTemplate);
+        if (added) {
+          recurringTemplates = await SupabaseService.getRecurringTemplates();
+        } else {
+          LocalStorageService.addRecurringTemplate(newTemplate);
+          recurringTemplates = LocalStorageService.getRecurringTemplates();
+        }
+      } catch (err) {
+        LocalStorageService.addRecurringTemplate(newTemplate);
+        recurringTemplates = LocalStorageService.getRecurringTemplates();
+      }
+    } else {
+      LocalStorageService.addRecurringTemplate(newTemplate);
+      recurringTemplates = LocalStorageService.getRecurringTemplates();
+    }
+
+    renderApp();
+    showToast(`固定費「${title}」を登録しました 📌`);
+    document.getElementById('recurring-modal-overlay')?.classList.remove('hidden');
+  });
+
+  // 固定費削除ボタン
+  document.querySelectorAll<HTMLButtonElement>('.btn-delete-recurring').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.deleteRecurringId;
+      if (!id) return;
+      if (confirm('この固定費テンプレートを削除しますか？')) {
+        if (isCloudSyncActive && isOnline) {
+          await SupabaseService.deleteRecurringTemplate(id);
+          recurringTemplates = await SupabaseService.getRecurringTemplates();
+        }
+        LocalStorageService.deleteRecurringTemplate(id);
+        recurringTemplates = LocalStorageService.getRecurringTemplates();
+        renderApp();
+        showToast('固定費を削除しました');
+        document.getElementById('recurring-modal-overlay')?.classList.remove('hidden');
+      }
+    });
+  });
+
+  // 今月への固定費一括反映
+  const btnApplyRecurring = document.getElementById('btn-apply-recurring-to-month');
+  btnApplyRecurring?.addEventListener('click', async () => {
+    if (recurringTemplates.length === 0) return;
+
+    const monthlyExps = filterExpensesByMonth(expenses, selectedYearMonth);
+    const existingTitles = new Set(monthlyExps.map((e) => e.title));
+    const toAdd = recurringTemplates.filter((t) => !existingTitles.has(t.title));
+
+    if (toAdd.length === 0) {
+      showToast(`${selectedYearMonth} にはすべての固定費が既に登録済みです`, 'info');
+      return;
+    }
+
+    if (confirm(`${selectedYearMonth} の支出に未登録の固定費（${toAdd.length}件）を一括反映しますか？`)) {
+      const defaultDate = `${selectedYearMonth}-01`;
+      for (const t of toAdd) {
+        const payload = {
+          household_id: household.id,
+          title: t.title,
+          amount: t.amount,
+          category: t.category,
+          paid_by_name: t.paid_by_name,
+          expense_date: defaultDate,
+          is_settled: false,
+          split_type: t.split_type,
+        };
+
+        if (isCloudSyncActive && isOnline) {
+          try {
+            await SupabaseService.addExpense(payload);
+          } catch (e) {
+            SyncQueueService.enqueue('create_expense', payload);
+            LocalStorageService.addExpense(payload);
+          }
+        } else {
+          if (isCloudSyncActive) {
+            SyncQueueService.enqueue('create_expense', payload);
+          }
+          LocalStorageService.addExpense(payload);
+        }
+      }
+
+      if (isCloudSyncActive && isOnline) {
+        expenses = await SupabaseService.getExpenses();
+      } else {
+        expenses = LocalStorageService.getExpenses();
+      }
+
+      recurringModalOverlay?.classList.add('hidden');
+      renderApp();
+      showToast(`${selectedYearMonth} に固定費 ${toAdd.length}件 を反映しました！✨`);
+    }
+  });
+
+  // 20. CSVデータ出力
+  const btnExportCsvMonth = document.getElementById('btn-export-csv-month');
+  btnExportCsvMonth?.addEventListener('click', () => {
+    const monthlyExps = filterExpensesByMonth(expenses, selectedYearMonth);
+    if (monthlyExps.length === 0) {
+      showToast(`${selectedYearMonth} の支出データがありません`, 'error');
+      return;
+    }
+    const filename = `pairpay_expenses_${selectedYearMonth}.csv`;
+    downloadExpensesCsv(monthlyExps, household, filename);
+    showToast(`${filename} をダウンロードしました 📥`);
+  });
+
+  const btnExportCsvAll = document.getElementById('btn-export-csv-all');
+  btnExportCsvAll?.addEventListener('click', () => {
+    if (expenses.length === 0) {
+      showToast('支出データがありません', 'error');
+      return;
+    }
+    const todayStr = new Date().toISOString().split('T')[0];
+    const filename = `pairpay_expenses_all_${todayStr}.csv`;
+    downloadExpensesCsv(expenses, household, filename);
+    showToast(`${filename} をダウンロードしました 📥`);
+  });
 }
+
+// オフライン同期キューの送信処理
+async function flushSyncQueue() {
+  if (!isCloudSyncActive || !isOnline) return;
+
+  const count = SyncQueueService.getPendingCount();
+  if (count === 0) return;
+
+  const result = await SyncQueueService.processQueue(async (item) => {
+    switch (item.action) {
+      case 'create_expense':
+        return !!(await SupabaseService.addExpense(item.payload));
+      case 'update_expense':
+        return await SupabaseService.updateExpense(item.payload);
+      case 'delete_expense':
+        return await SupabaseService.deleteExpense(item.payload.id);
+      case 'settle_month':
+        return await SupabaseService.settleMonth(item.payload.householdId, item.payload.yearMonth);
+      case 'add_settlement_log':
+        return !!(await SupabaseService.addSettlementLog(item.payload));
+      case 'save_recurring':
+        return !!(await SupabaseService.addRecurringTemplate(item.payload));
+      case 'delete_recurring':
+        return await SupabaseService.deleteRecurringTemplate(item.payload.id);
+      default:
+        return true;
+    }
+  });
+
+  if (result.succeeded > 0) {
+    expenses = await SupabaseService.getExpenses();
+    settlementLogs = await SupabaseService.getSettlementLogs();
+    showToast(`オフライン中の変更（${result.succeeded}件）をクラウド同期しました 🟢`);
+  }
+}
+
+// オンライン・オフラインイベントリスナー
+window.addEventListener('online', async () => {
+  isOnline = true;
+  showToast('オンラインに復帰しました 🌐', 'info');
+  await flushSyncQueue();
+  renderApp();
+});
+
+window.addEventListener('offline', () => {
+  isOnline = false;
+  showToast('オフラインモードで動作中です 📴', 'info');
+  renderApp();
+});
 
 // アプリケーション初期化
 document.addEventListener('DOMContentLoaded', async () => {
   await loadData();
+  await flushSyncQueue();
   renderApp();
 });
