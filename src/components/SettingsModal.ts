@@ -1,5 +1,6 @@
 import { Household, SupabaseConfig } from '../types.ts';
 import { escapeHtml } from '../utils/sanitize.ts';
+import { APP_VERSION } from '../version.ts';
 
 export function renderSettingsModal(
   household: Household,
@@ -223,20 +224,44 @@ export function renderSettingsModal(
             </form>
           </div>
 
-          <!-- 4. データ管理 -->
-          <div class="pt-1">
+          <!-- 4. アプリ情報 & 手動更新 -->
+          <div class="space-y-2.5 bg-[#fbfaf8] p-3.5 rounded-2xl border border-[#eeebe4]">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-[#4a504b] flex items-center gap-1.5">
+                <i data-lucide="info" class="w-3.5 h-3.5 text-[#52796f]"></i>
+                <span>アプリのバージョン</span>
+              </span>
+              <span class="text-[11px] font-mono font-bold text-[#52796f] bg-[#edf4ee] px-2.5 py-0.5 rounded-full border border-[#c8decb]">
+                v${APP_VERSION}
+              </span>
+            </div>
+            <p class="text-[11px] text-[#78716c] leading-relaxed">
+              最新の更新が反映されない場合は、下のボタンを押してアプリのキャッシュを再読み込みしてください。
+            </p>
+            <button
+              type="button"
+              id="btn-app-update"
+              class="w-full py-2.5 px-3 rounded-xl border border-[#ded9ce] bg-white hover:bg-[#f0ece5] active:scale-[0.98] text-[#2d312e] text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-[#52796f]"></i>
+              <span>最新版に手動更新</span>
+            </button>
+          </div>
+
+          <!-- 5. データ管理 -->
+          <div class="pt-0.5">
             <button
               type="button"
               id="btn-reset-data"
               class="w-full py-2.5 px-3 rounded-xl border border-[#f0cdd5] text-[#c26d7f] hover:bg-[#faedf0] active:scale-[0.98] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
               <span>ローカルデータを初期化</span>
             </button>
           </div>
 
           <div class="pt-1 text-center">
-            <p class="text-[10px] text-[#a8a29e]">PairPay • Soft Cafe Edition</p>
+            <p class="text-[10px] text-[#a8a29e]">PairPay v${APP_VERSION} • Soft Cafe Edition</p>
           </div>
         </div>
       </div>

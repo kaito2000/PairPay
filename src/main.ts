@@ -842,6 +842,52 @@ function attachEventListeners(
       showToast('サンプルデータに初期化しました');
     }
   });
+
+  // 17. アプリ手動更新（PWAキャッシュ破棄＆最新版取得）
+  const btnAppUpdate = document.getElementById('btn-app-update') as HTMLButtonElement | null;
+  btnAppUpdate?.addEventListener('click', async () => {
+    btnAppUpdate.disabled = true;
+    btnAppUpdate.innerHTML = `
+      <svg class="animate-spin h-3.5 w-3.5 text-[#52796f]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <span>最新版を確認中...</span>
+    `;
+
+    showToast('最新版のアプリを確認・更新中...', 'info');
+
+    try {
+      // 1. Service Worker の更新チェック
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.update().catch(() => {});
+        }
+      }
+
+      // 2. CacheStorage の全キャッシュ破棄
+      if ('caches' in window) {
+        const cacheKeys = await caches.keys();
+        await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+      }
+
+      showToast('最新版を再読み込みします', 'success');
+
+      // トースト表示後にリロード（キャッシュバスターを付与）
+      setTimeout(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('_t', Date.now().toString());
+        window.location.replace(url.toString());
+      }, 500);
+    } catch (e) {
+      console.error('App update failed', e);
+      showToast('キャッシュ更新に失敗しました。再読込します', 'error');
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
+    }
+  });
 }
 
 // アプリケーション初期化
