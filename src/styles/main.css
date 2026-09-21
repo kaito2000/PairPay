@@ -25,6 +25,21 @@
   input, button, select, textarea {
     user-select: auto;
   }
+
+  /* 入力欄のネイティブ差分吸収 & 高さと幅の完全一致 */
+  input[type="date"], input[type="text"] {
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    padding: 0;
+    margin: 0;
+  }
 }
 
 /* スクロールバー非表示 */

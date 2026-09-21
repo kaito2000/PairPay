@@ -315,7 +315,7 @@ function attachEventListeners(
   const openModal = (expenseId?: string) => {
     const inputExpenseId = document.getElementById('input-expense-id') as HTMLInputElement;
     const modalTitle = document.getElementById('modal-expense-title');
-    const btnSubmitText = document.getElementById('btn-submit-expense-text');
+    const btnHeaderSaveText = document.getElementById('btn-header-save-text');
     const titleInput = document.getElementById('input-title') as HTMLInputElement;
     const dateInput = document.getElementById('input-date') as HTMLInputElement;
     const inputPayer = document.getElementById('input-payer') as HTMLInputElement;
@@ -336,10 +336,10 @@ function attachEventListeners(
         const match = b.dataset.split === split;
         if (match) {
           b.className =
-            'split-btn py-2 px-1 rounded-xl text-[11px] font-extrabold transition-all bg-white text-[#426b42] shadow-xs flex flex-col items-center justify-center cursor-pointer';
+            'split-btn py-1.5 px-0.5 rounded-lg text-[10px] font-extrabold transition-all bg-white text-[#426b42] shadow-2xs flex flex-col items-center justify-center cursor-pointer';
         } else {
           b.className =
-            'split-btn py-2 px-1 rounded-xl text-[11px] font-bold transition-all text-[#8a857b] hover:text-[#2d312e] flex flex-col items-center justify-center cursor-pointer truncate';
+            'split-btn py-1.5 px-0.5 rounded-lg text-[10px] font-bold transition-all text-[#8a857b] hover:text-[#2d312e] flex flex-col items-center justify-center cursor-pointer min-w-0';
         }
       });
     };
@@ -351,7 +351,7 @@ function attachEventListeners(
 
       if (inputExpenseId) inputExpenseId.value = exp.id;
       if (modalTitle) modalTitle.textContent = '支出を編集する';
-      if (btnSubmitText) btnSubmitText.textContent = '変更を保存する';
+      if (btnHeaderSaveText) btnHeaderSaveText.textContent = '保存';
 
       currentAmountStr = exp.amount.toString();
       updateAmountDisplay();
@@ -367,12 +367,12 @@ function attachEventListeners(
           const isUser1 = exp.paid_by_name === household.user1_name;
           const match = b.dataset.payer === exp.paid_by_name;
           if (match) {
-            b.className = `payer-btn py-2.5 rounded-xl text-xs font-extrabold transition-all bg-white ${
+            b.className = `payer-btn py-1.5 rounded-lg text-xs font-extrabold transition-all bg-white ${
               isUser1 ? 'text-[#3d637d]' : 'text-[#9c4c5e]'
-            } shadow-sm flex items-center justify-center gap-1.5 cursor-pointer`;
+            } shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer truncate`;
           } else {
             b.className =
-              'payer-btn py-2.5 rounded-xl text-xs font-extrabold transition-all text-[#8a857b] hover:text-[#2d312e] flex items-center justify-center gap-1.5 cursor-pointer';
+              'payer-btn py-1.5 rounded-lg text-xs font-extrabold transition-all text-[#8a857b] hover:text-[#2d312e] flex items-center justify-center gap-1.5 cursor-pointer truncate';
           }
         });
       }
@@ -381,10 +381,10 @@ function attachEventListeners(
         inputCategory.value = exp.category;
         catButtons.forEach((b) => {
           if (b.dataset.category === exp.category) {
-            b.classList.add('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-xs', 'ring-1', 'ring-[#52796f]/30');
+            b.classList.add('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-2xs', 'ring-1', 'ring-[#52796f]/30');
             b.classList.remove('border-[#eeebe4]', 'bg-[#fbfaf8]', 'text-[#6d746f]');
           } else {
-            b.classList.remove('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-xs', 'ring-1', 'ring-[#52796f]/30');
+            b.classList.remove('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-2xs', 'ring-1', 'ring-[#52796f]/30');
             b.classList.add('border-[#eeebe4]', 'bg-[#fbfaf8]', 'text-[#6d746f]');
           }
         });
@@ -393,7 +393,7 @@ function attachEventListeners(
       // 新規登録モード
       if (inputExpenseId) inputExpenseId.value = '';
       if (modalTitle) modalTitle.textContent = '支出を記録する';
-      if (btnSubmitText) btnSubmitText.textContent = 'この内容で記録する';
+      if (btnHeaderSaveText) btnHeaderSaveText.textContent = '保存';
 
       currentAmountStr = '0';
       updateAmountDisplay();
@@ -415,10 +415,10 @@ function attachEventListeners(
         payerButtons.forEach((b, idx) => {
           if (idx === 0) {
             b.className =
-              'payer-btn py-2.5 rounded-xl text-xs font-extrabold transition-all bg-white text-[#3d637d] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer';
+              'payer-btn py-1.5 rounded-lg text-xs font-extrabold transition-all bg-white text-[#3d637d] shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer truncate';
           } else {
             b.className =
-              'payer-btn py-2.5 rounded-xl text-xs font-extrabold transition-all text-[#8a857b] hover:text-[#2d312e] flex items-center justify-center gap-1.5 cursor-pointer';
+              'payer-btn py-1.5 rounded-lg text-xs font-extrabold transition-all text-[#8a857b] hover:text-[#2d312e] flex items-center justify-center gap-1.5 cursor-pointer truncate';
           }
         });
       }
@@ -427,7 +427,7 @@ function attachEventListeners(
         inputCategory.value = 'food';
         catButtons.forEach((b, idx) => {
           if (idx === 0) {
-            b.classList.add('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-xs', 'ring-1', 'ring-[#52796f]/30');
+            b.classList.add('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-2xs', 'ring-1', 'ring-[#52796f]/30');
             b.classList.remove('border-[#eeebe4]', 'bg-[#fbfaf8]', 'text-[#6d746f]');
           } else {
             b.classList.remove('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-xs', 'ring-1', 'ring-[#52796f]/30');
@@ -513,15 +513,15 @@ function attachEventListeners(
 
       payerButtons.forEach((b) => {
         b.className =
-          'payer-btn py-2.5 rounded-xl text-xs font-extrabold transition-all text-[#8a857b] hover:text-[#2d312e] flex items-center justify-center gap-1.5 cursor-pointer';
+          'payer-btn py-1.5 rounded-lg text-xs font-extrabold transition-all text-[#8a857b] hover:text-[#2d312e] flex items-center justify-center gap-1.5 cursor-pointer truncate';
       });
 
       if (isUser1) {
         btn.className =
-          'payer-btn py-2.5 rounded-xl text-xs font-extrabold transition-all bg-white text-[#3d637d] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer';
+          'payer-btn py-1.5 rounded-lg text-xs font-extrabold transition-all bg-white text-[#3d637d] shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer truncate';
       } else {
         btn.className =
-          'payer-btn py-2.5 rounded-xl text-xs font-extrabold transition-all bg-white text-[#9c4c5e] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer';
+          'payer-btn py-1.5 rounded-lg text-xs font-extrabold transition-all bg-white text-[#9c4c5e] shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer truncate';
       }
     });
   });
@@ -537,10 +537,10 @@ function attachEventListeners(
 
       inputCategory.value = cat;
       catButtons.forEach((b) => {
-        b.classList.remove('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-xs', 'ring-1', 'ring-[#52796f]/30');
+        b.classList.remove('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-2xs', 'ring-1', 'ring-[#52796f]/30');
         b.classList.add('border-[#eeebe4]', 'bg-[#fbfaf8]', 'text-[#6d746f]');
       });
-      btn.classList.add('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-xs', 'ring-1', 'ring-[#52796f]/30');
+      btn.classList.add('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-2xs', 'ring-1', 'ring-[#52796f]/30');
       btn.classList.remove('border-[#eeebe4]', 'bg-[#fbfaf8]', 'text-[#6d746f]');
     });
   });
@@ -564,10 +564,10 @@ function attachEventListeners(
         const match = b.dataset.split === split;
         if (match) {
           b.className =
-            'split-btn py-2 px-1 rounded-xl text-[11px] font-extrabold transition-all bg-white text-[#426b42] shadow-xs flex flex-col items-center justify-center cursor-pointer';
+            'split-btn py-1.5 px-0.5 rounded-lg text-[10px] font-extrabold transition-all bg-white text-[#426b42] shadow-2xs flex flex-col items-center justify-center cursor-pointer';
         } else {
           b.className =
-            'split-btn py-2 px-1 rounded-xl text-[11px] font-bold transition-all text-[#8a857b] hover:text-[#2d312e] flex flex-col items-center justify-center cursor-pointer truncate';
+            'split-btn py-1.5 px-0.5 rounded-lg text-[10px] font-bold transition-all text-[#8a857b] hover:text-[#2d312e] flex flex-col items-center justify-center cursor-pointer min-w-0';
         }
       });
     });
@@ -575,8 +575,8 @@ function attachEventListeners(
 
   // 5. 支出フォーム送信
   const formExpense = document.getElementById('form-expense') as HTMLFormElement;
-  const btnSubmitExpense = document.getElementById('btn-submit-expense') as HTMLButtonElement;
-  const btnHeaderSave = document.getElementById('btn-header-save-expense');
+  const btnSubmitExpense = document.getElementById('btn-submit-expense') as HTMLButtonElement | null;
+  const btnHeaderSave = document.getElementById('btn-header-save-expense') as HTMLButtonElement | null;
   let isSubmitting = false;
 
   btnHeaderSave?.addEventListener('click', () => {
@@ -607,6 +607,10 @@ function attachEventListeners(
     }
 
     isSubmitting = true;
+    if (btnHeaderSave) {
+      btnHeaderSave.disabled = true;
+      btnHeaderSave.classList.add('opacity-60', 'pointer-events-none');
+    }
     if (btnSubmitExpense) {
       btnSubmitExpense.disabled = true;
       btnSubmitExpense.classList.add('opacity-70', 'cursor-not-allowed');
@@ -708,6 +712,10 @@ function attachEventListeners(
       showToast('記録に失敗しました。もう一度お試しください', 'error');
     } finally {
       isSubmitting = false;
+      if (btnHeaderSave) {
+        btnHeaderSave.disabled = false;
+        btnHeaderSave.classList.remove('opacity-60', 'pointer-events-none');
+      }
       if (btnSubmitExpense) {
         btnSubmitExpense.disabled = false;
         btnSubmitExpense.classList.remove('opacity-70', 'cursor-not-allowed');
