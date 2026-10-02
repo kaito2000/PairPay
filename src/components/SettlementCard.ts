@@ -6,7 +6,9 @@ export function renderSettlementCard(
   household: Household,
   selectedMonthLabel: string,
   unsettledCount: number,
-  monthlyTotalAmount: number
+  monthlyTotalAmount: number,
+  user1TotalPaid?: number,
+  user2TotalPaid?: number
 ): string {
   const isZero = summary.transferAmount === 0;
   const safeUser1 = escapeHtml(household.user1_name);
@@ -14,16 +16,30 @@ export function renderSettlementCard(
   const safeSender = escapeHtml(summary.senderName || '');
   const safeReceiver = escapeHtml(summary.receiverName || '');
 
+  // その月の立替総額（精算完了後も0にならず実績を表示）
+  const user1Paid = typeof user1TotalPaid === 'number' ? user1TotalPaid : summary.user1Total;
+  const user2Paid = typeof user2TotalPaid === 'number' ? user2TotalPaid : summary.user2Total;
+
   // この月の全支出が精算済みかどうかの判定
   const isAllSettled = unsettledCount === 0 && monthlyTotalAmount > 0;
   const isEmptyMonth = monthlyTotalAmount === 0;
-  const isActionDisabled = unsettledCount === 0 || isEmptyMonth;
 
   let settleBtnText = '精算完了にする';
+  let settleBtnClass = '';
+  let settleBtnIcon = 'check';
+
   if (isEmptyMonth) {
     settleBtnText = '支出なし';
+    settleBtnClass = 'bg-white/10 text-white/40 border border-white/10 cursor-not-allowed';
+    settleBtnIcon = 'check';
   } else if (isAllSettled) {
-    settleBtnText = '精算済み';
+    settleBtnText = '精算を取り消す';
+    settleBtnClass = 'bg-[#c26d7f]/25 hover:bg-[#c26d7f]/35 active:scale-[0.98] text-[#fca5a5] border border-[#c26d7f]/40 cursor-pointer shadow-xs';
+    settleBtnIcon = 'rotate-ccw';
+  } else {
+    settleBtnText = '精算完了にする';
+    settleBtnClass = 'bg-gradient-to-r from-[#52796f] to-[#406259] hover:from-[#5e8a7f] hover:to-[#4a6f65] active:scale-[0.98] text-white shadow-md shadow-[#202b26]/30 cursor-pointer';
+    settleBtnIcon = 'check';
   }
 
   return `
@@ -61,7 +77,7 @@ export function renderSettlementCard(
             <span class="font-medium">${safeUser1}の立替</span>
           </div>
           <div class="text-xl font-extrabold tracking-tight text-white">
-            ¥${summary.user1Total.toLocaleString()}
+            ¥${user1Paid.toLocaleString()}
           </div>
         </div>
         <div class="pl-2">
@@ -70,7 +86,7 @@ export function renderSettlementCard(
             <span class="font-medium">${safeUser2}の立替</span>
           </div>
           <div class="text-xl font-extrabold tracking-tight text-white">
-            ¥${summary.user2Total.toLocaleString()}
+            ¥${user2Paid.toLocaleString()}
           </div>
         </div>
       </div>
@@ -124,14 +140,11 @@ export function renderSettlementCard(
         </button>
         <button
           id="btn-settle-all"
-          ${isActionDisabled ? 'disabled' : ''}
-          class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl ${
-            isActionDisabled
-              ? 'bg-white/10 text-white/40 border border-white/10 cursor-not-allowed'
-              : 'bg-gradient-to-r from-[#52796f] to-[#406259] hover:from-[#5e8a7f] hover:to-[#4a6f65] active:scale-[0.98] text-white shadow-md shadow-[#202b26]/30 cursor-pointer'
-          } text-xs font-bold transition-all"
+          data-action="${isAllSettled ? 'unsettle' : 'settle'}"
+          ${isEmptyMonth ? 'disabled' : ''}
+          class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl ${settleBtnClass} text-xs font-bold transition-all"
         >
-          <i data-lucide="${isAllSettled ? 'check-circle' : 'check'}" class="w-3.5 h-3.5"></i>
+          <i data-lucide="${settleBtnIcon}" class="w-3.5 h-3.5"></i>
           <span>${settleBtnText}</span>
         </button>
       </div>

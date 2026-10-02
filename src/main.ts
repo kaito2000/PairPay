@@ -37,6 +37,7 @@ import {
   Download,
   Inbox,
   CalendarCheck,
+  RotateCcw,
 } from 'lucide';
 
 import { CategoryType, Expense, Household, RecurringTemplate, SettlementLog, SplitType } from './types.ts';
@@ -184,6 +185,14 @@ function renderApp() {
   const unsettledInMonth = monthlyExpenses.filter((e) => !e.is_settled);
   const monthlyTotal = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
 
+  // その月の立替総額（精算完了後も0にならず実績を表示）
+  const user1TotalPaid = monthlyExpenses
+    .filter((e) => e.paid_by_name === household.user1_name)
+    .reduce((sum, e) => sum + e.amount, 0);
+  const user2TotalPaid = monthlyExpenses
+    .filter((e) => e.paid_by_name === household.user2_name)
+    .reduce((sum, e) => sum + e.amount, 0);
+
   // 選択月に対する精算計算
   const settlementSummary = calculateSettlement(unsettledInMonth, household);
   const supabaseConfig = getSupabaseConfig();
@@ -192,7 +201,15 @@ function renderApp() {
     ${renderHeader(isCloudSyncActive, SyncQueueService.getPendingCount(), isOnline)}
     <main class="p-4 space-y-3.5 flex-1">
       ${renderMonthNavigator(selectedYearMonth, currentYM, availableMonths)}
-      ${renderSettlementCard(settlementSummary, household, selectedMonthLabel, unsettledInMonth.length, monthlyTotal)}
+      ${renderSettlementCard(
+        settlementSummary,
+        household,
+        selectedMonthLabel,
+        unsettledInMonth.length,
+        monthlyTotal,
+        user1TotalPaid,
+        user2TotalPaid
+      )}
       ${renderCategoryBar(monthlyExpenses, selectedMonthLabel)}
       ${renderExpenseList(monthlyExpenses, household, showAllExpenses, selectedMonthLabel)}
     </main>
@@ -249,6 +266,7 @@ function renderApp() {
       Download,
       Inbox,
       CalendarCheck,
+      RotateCcw,
     },
   });
 
@@ -773,9 +791,42 @@ function attachEventListeners(
     }
   });
 
-  // 8. 精算完了ボタン (選択月の未精算を精算済みにし、精算ログを記録)
+  // 8. 精算完了 / 取消ボタン (選択月の精算状態を切り替え、精算ログを同期)
   const btnSettleAll = document.getElementById('btn-settle-all');
   btnSettleAll?.addEventListener('click', async () => {
+    const action = btnSettleAll.dataset.action;
+
+    // 精算を取り消す場合 (未精算に戻す)
+    if (action === 'unsettle') {
+      if (confirm(`${selectedMonthLabel}の精算を取り消して、未精算の状態に戻しますか？`)) {
+        if (isCloudSyncActive && isOnline) {
+          try {
+            const success = await SupabaseService.unsettleMonth(household.id, selectedYearMonth);
+            if (!success) {
+              throw new Error(`Supabase unsettleMonth returned false for ${selectedYearMonth}`);
+            }
+            expenses = await SupabaseService.getExpenses();
+            LocalStorageService.unsettleMonth(selectedYearMonth);
+          } catch (e) {
+            console.warn('Online unsettle failed, fallback to local storage and queue', e);
+            SyncQueueService.enqueue('unsettle_month', { householdId: household.id, yearMonth: selectedYearMonth });
+            LocalStorageService.unsettleMonth(selectedYearMonth);
+            expenses = LocalStorageService.getExpenses();
+          }
+        } else {
+          if (isCloudSyncActive) {
+            SyncQueueService.enqueue('unsettle_month', { householdId: household.id, yearMonth: selectedYearMonth });
+          }
+          LocalStorageService.unsettleMonth(selectedYearMonth);
+          expenses = LocalStorageService.getExpenses();
+        }
+        renderApp();
+        showToast(`${selectedMonthLabel}の精算を取り消しました ↩️`);
+      }
+      return;
+    }
+
+    // 精算を完了にする場合
     if (unsettledCountInMonth === 0) {
       showToast(`${selectedMonthLabel}に未精算の支出はありません`, 'info');
       return;
@@ -1287,6 +1338,8 @@ async function flushSyncQueue() {
         return await SupabaseService.deleteExpense(item.payload.id);
       case 'settle_month':
         return await SupabaseService.settleMonth(item.payload.householdId, item.payload.yearMonth);
+      case 'unsettle_month':
+        return await SupabaseService.unsettleMonth(item.payload.householdId, item.payload.yearMonth);
       case 'add_settlement_log':
         return !!(await SupabaseService.addSettlementLog(item.payload));
       case 'save_recurring':

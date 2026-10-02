@@ -148,6 +148,16 @@ export class LocalStorageService {
     this.saveExpenses(expenses);
   }
 
+  static unsettleMonth(yearMonth: string): void {
+    const expenses = this.getExpenses().map((e) => {
+      if (e.expense_date.startsWith(yearMonth)) {
+        return { ...e, is_settled: false };
+      }
+      return e;
+    });
+    this.saveExpenses(expenses);
+  }
+
   // ==========================================
   // 精算履歴 (Settlement Logs)
   // ==========================================
@@ -155,7 +165,17 @@ export class LocalStorageService {
     try {
       const data = localStorage.getItem(STORAGE_KEY_SETTLEMENT_LOGS);
       if (data) {
-        return JSON.parse(data);
+        const parsed: SettlementLog[] = JSON.parse(data);
+        // 同一月は最新1件のみに集約（重複排除）
+        const seen = new Set<string>();
+        const unique: SettlementLog[] = [];
+        for (const log of parsed) {
+          if (!seen.has(log.year_month)) {
+            seen.add(log.year_month);
+            unique.push(log);
+          }
+        }
+        return unique;
       }
     } catch (e) {
       console.error('Failed to load settlement logs', e);
@@ -169,6 +189,20 @@ export class LocalStorageService {
 
   static addSettlementLog(logData: Omit<SettlementLog, 'id' | 'created_at'>): SettlementLog {
     const logs = this.getSettlementLogs();
+    const existingIndex = logs.findIndex((l) => l.year_month === logData.year_month);
+
+    if (existingIndex >= 0) {
+      // 既存ログの内容を更新して1つに集約（連打されても重複しない）
+      const updatedLog: SettlementLog = {
+        ...logs[existingIndex],
+        ...logData,
+        settled_at: logData.settled_at || new Date().toISOString(),
+      };
+      logs[existingIndex] = updatedLog;
+      this.saveSettlementLogs(logs);
+      return updatedLog;
+    }
+
     const newLog: SettlementLog = {
       ...logData,
       id: 'log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),

@@ -1,8 +1,9 @@
 import assert from 'node:assert';
 import { renderSettlementCard } from '../src/components/SettlementCard.ts';
 import { SettlementSummary, Household } from '../src/types.ts';
+import { LocalStorageService } from '../src/services/storage.ts';
 
-console.log('=== 精算カード表示 & 月末計算の単体テスト開始 ===\n');
+console.log('=== 精算カード表示 & 取消 & 重複排除の単体テスト開始 ===\n');
 
 // 1. 月末日の計算テスト
 console.log('1. 月末日の正確性テスト');
@@ -21,7 +22,7 @@ assert.strictEqual(calculateMonthEnd('2026-10'), '2026-10-31', '10月は31日ま
 console.log('  月末日計算: ALL PASSED ✅\n');
 
 // 2. SettlementCard のレンダリングテスト
-console.log('2. 精算カードボタン表示テスト');
+console.log('2. 精算カードボタン表示 & 立替実績表示テスト');
 
 const mockHousehold: Household = {
   id: 'h1',
@@ -46,11 +47,10 @@ const emptySummary: SettlementSummary = {
 };
 
 // ケースA: 支出がまだ何もない月（未登録）
-const htmlEmpty = renderSettlementCard(emptySummary, mockHousehold, '2026年10月', 0, 0);
+const htmlEmpty = renderSettlementCard(emptySummary, mockHousehold, '2026年10月', 0, 0, 0, 0);
 assert(htmlEmpty.includes('支出なし'), '支出が0件の月は「支出なし」と表示されるべき');
-assert(!htmlEmpty.includes('>精算済み<'), '支出が0件の月は「精算済み」と表示されてはならない');
 assert(htmlEmpty.includes('disabled'), '支出が0件の月はボタンが無効化されるべき');
-console.log('  支出0件の月: ALL PASSED ✅');
+console.log('  ケースA (支出0件の月): ALL PASSED ✅');
 
 // ケースB: 未精算の支出がある月
 const activeSummary: SettlementSummary = {
@@ -65,15 +65,125 @@ const activeSummary: SettlementSummary = {
   transferAmount: 5000,
   statusText: '妻 ➔ 夫 へ ¥5,000 送金',
 };
-const htmlUnsettled = renderSettlementCard(activeSummary, mockHousehold, '2026年9月', 2, 10000);
+const htmlUnsettled = renderSettlementCard(activeSummary, mockHousehold, '2026年9月', 2, 10000, 10000, 0);
 assert(htmlUnsettled.includes('精算完了にする'), '未精算がある月は「精算完了にする」と表示されるべき');
 assert(!htmlUnsettled.includes('disabled'), '未精算がある月はボタンが活性化されるべき');
-console.log('  未精算ありの月: ALL PASSED ✅');
+assert(htmlUnsettled.includes('data-action="settle"'), '未精算時は data-action="settle" であるべき');
+console.log('  ケースB (未精算ありの月): ALL PASSED ✅');
 
-// ケースC: すべて精算済みの月 (支出あり、未精算0件)
-const htmlSettled = renderSettlementCard(emptySummary, mockHousehold, '2026年8月', 0, 15000);
-assert(htmlSettled.includes('精算済み'), '全支出が精算完了した月は「精算済み」と表示されるべき');
-assert(htmlSettled.includes('disabled'), '全支出が精算完了した月はボタンが無効化されるべき');
-console.log('  全精算済みの月: ALL PASSED ✅\n');
+// ケースC: すべて精算済みの月 (支出あり、未精算0件) ➔ 精算を取り消すボタンになり、立替総額は0にならない
+const htmlSettled = renderSettlementCard(emptySummary, mockHousehold, '2026年8月', 0, 15000, 9000, 6000);
+assert(htmlSettled.includes('精算を取り消す'), '全支出が精算完了した月は「精算を取り消す」と表示されるべき');
+assert(!htmlSettled.includes('disabled'), '精算取消ボタンはクリック可能であるべき');
+assert(htmlSettled.includes('data-action="unsettle"'), '精算完了後は data-action="unsettle" であるべき');
+// 要望1の検証: 精算完了後も立替金額が0にならず、実績（¥9,000 と ¥6,000）が表示されていること
+assert(htmlSettled.includes('¥9,000'), '精算完了後も夫の立替総額 ¥9,000 が表示されるべき');
+assert(htmlSettled.includes('¥6,000'), '精算完了後も妻の立替総額 ¥6,000 が表示されるべき');
+console.log('  ケースC (全精算済み・立替額維持・取消ボタン): ALL PASSED ✅\n');
 
-console.log('🎉 ALL SETTLEMENT CARD & MONTH TESTS COMPLETED SUCCESSFULLY! 🎉');
+// 3. 重複精算ログの集約（連打テスト）
+console.log('3. 精算履歴の重複排除（連打テスト）');
+
+// Node.js環境下でlocalStorageモック
+const storageMap = new Map<string, string>();
+(global as any).localStorage = {
+  getItem: (key: string) => storageMap.get(key) || null,
+  setItem: (key: string, val: string) => storageMap.set(key, val),
+  removeItem: (key: string) => storageMap.delete(key),
+};
+
+// 2026年9月の精算ログを1回目追加
+LocalStorageService.addSettlementLog({
+  household_id: 'h1',
+  year_month: '2026-09',
+  settled_at: '2026-09-30T10:00:00Z',
+  sender_name: '妻',
+  receiver_name: '夫',
+  amount: 5000,
+  total_amount: 10000,
+  expense_count: 2,
+});
+
+assert.strictEqual(LocalStorageService.getSettlementLogs().length, 1, '1回目の精算ログが記録されるべき');
+
+// 連打！同じ2026年9月を2回目、3回目追加（精算と取消を連打）
+LocalStorageService.addSettlementLog({
+  household_id: 'h1',
+  year_month: '2026-09',
+  settled_at: '2026-09-30T10:01:00Z',
+  sender_name: '妻',
+  receiver_name: '夫',
+  amount: 5000,
+  total_amount: 10000,
+  expense_count: 2,
+});
+
+LocalStorageService.addSettlementLog({
+  household_id: 'h1',
+  year_month: '2026-09',
+  settled_at: '2026-09-30T10:02:00Z',
+  sender_name: '妻',
+  receiver_name: '夫',
+  amount: 6000,
+  total_amount: 12000,
+  expense_count: 3,
+});
+
+const logs = LocalStorageService.getSettlementLogs();
+assert.strictEqual(logs.length, 1, '何回連打されても同一月のログは1つだけに集約されるべき');
+assert.strictEqual(logs[0].amount, 6000, '最新の内容に更新されていること');
+assert.strictEqual(logs[0].expense_count, 3, '最新の件数に更新されていること');
+console.log('  履歴の同一月1件集約: ALL PASSED ✅\n');
+
+// 4. 精算取消 (unsettleMonth) テスト
+console.log('4. 精算取消 (unsettleMonth) のテスト');
+LocalStorageService.saveExpenses([
+  {
+    id: 'exp-1',
+    household_id: 'h1',
+    title: 'スーパー',
+    amount: 3000,
+    category: 'food',
+    paid_by_name: '夫',
+    expense_date: '2026-09-15',
+    is_settled: true, // 既に精算済み
+    created_at: '2026-09-15T12:00:00Z',
+  },
+  {
+    id: 'exp-2',
+    household_id: 'h1',
+    title: '日用品',
+    amount: 2000,
+    category: 'daily',
+    paid_by_name: '妻',
+    expense_date: '2026-09-20',
+    is_settled: true, // 既に精算済み
+    created_at: '2026-09-20T12:00:00Z',
+  },
+  {
+    id: 'exp-3',
+    household_id: 'h1',
+    title: '8月の電気代',
+    amount: 5000,
+    category: 'utility',
+    paid_by_name: '夫',
+    expense_date: '2026-08-10',
+    is_settled: true, // 8月は精算済みのまま残すべき
+    created_at: '2026-08-10T12:00:00Z',
+  },
+]);
+
+// 2026年9月を取り消し（未精算に戻す）
+LocalStorageService.unsettleMonth('2026-09');
+const expsAfter = LocalStorageService.getExpenses();
+
+const exp1 = expsAfter.find((e) => e.id === 'exp-1')!;
+const exp2 = expsAfter.find((e) => e.id === 'exp-2')!;
+const exp3 = expsAfter.find((e) => e.id === 'exp-3')!;
+
+assert.strictEqual(exp1.is_settled, false, '9月の支出1は未精算に戻るべき');
+assert.strictEqual(exp2.is_settled, false, '9月の支出2は未精算に戻るべき');
+assert.strictEqual(exp3.is_settled, true, '8月の支出3は精算済みのまま維持されるべき');
+console.log('  精算取消 (unsettleMonth): ALL PASSED ✅\n');
+
+console.log('🎉 ALL TESTS COMPLETED SUCCESSFULLY! 🎉');

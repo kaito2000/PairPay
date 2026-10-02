@@ -441,6 +441,38 @@ export class SupabaseService {
     }
   }
 
+  /**
+   * 特定の年月の精算を取り消し、未精算に戻す
+   */
+  static async unsettleMonth(householdId: string, yearMonth: string): Promise<boolean> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return false;
+
+    const [year, month] = yearMonth.split('-').map(Number);
+    const lastDay = new Date(year, month, 0).getDate();
+    const startDate = `${yearMonth}-01`;
+    const endDate = `${yearMonth}-${String(lastDay).padStart(2, '0')}`;
+
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .update({ is_settled: false })
+        .eq('household_id', householdId)
+        .gte('expense_date', startDate)
+        .lte('expense_date', endDate)
+        .eq('is_settled', true);
+
+      if (error) {
+        console.error('Supabase unsettleMonth error:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('Supabase unsettleMonth exception:', err);
+      return false;
+    }
+  }
+
 
   /**
    * リアルタイム変更を購読 (Supabase Realtime)
@@ -510,7 +542,18 @@ export class SupabaseService {
         console.warn('Failed to fetch settlement logs from Supabase (table might not exist yet)', error);
         return [];
       }
-      return (data || []) as SettlementLog[];
+
+      // 同一月は最新1件のみに集約（重複排除）
+      const list = (data || []) as SettlementLog[];
+      const seen = new Set<string>();
+      const unique: SettlementLog[] = [];
+      for (const log of list) {
+        if (!seen.has(log.year_month)) {
+          seen.add(log.year_month);
+          unique.push(log);
+        }
+      }
+      return unique;
     } catch (e) {
       console.warn('Error fetching settlement logs', e);
       return [];
@@ -524,6 +567,36 @@ export class SupabaseService {
     if (!supabase) return null;
 
     try {
+      // 既存の同一月のログがあるか確認して1件に集約（連打されても重複しない）
+      const { data: existing } = await supabase
+        .from('settlement_logs')
+        .select('id')
+        .eq('household_id', logData.household_id)
+        .eq('year_month', logData.year_month)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        const { data, error } = await supabase
+          .from('settlement_logs')
+          .update({
+            settled_at: logData.settled_at,
+            sender_name: logData.sender_name,
+            receiver_name: logData.receiver_name,
+            amount: logData.amount,
+            total_amount: logData.total_amount,
+            expense_count: logData.expense_count,
+          })
+          .eq('id', existing[0].id)
+          .select()
+          .single();
+
+        if (error) {
+          console.warn('Failed to update existing settlement log', error);
+          return null;
+        }
+        return data as SettlementLog;
+      }
+
       const { data, error } = await supabase
         .from('settlement_logs')
         .insert({
