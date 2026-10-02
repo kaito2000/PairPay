@@ -795,12 +795,17 @@ function attachEventListeners(
 
       if (isCloudSyncActive && isOnline) {
         try {
-          await SupabaseService.settleMonth(household.id, selectedYearMonth);
+          const success = await SupabaseService.settleMonth(household.id, selectedYearMonth);
+          if (!success) {
+            throw new Error(`Supabase settleMonth returned false for ${selectedYearMonth}`);
+          }
           await SupabaseService.addSettlementLog(logData);
           expenses = await SupabaseService.getExpenses();
           settlementLogs = await SupabaseService.getSettlementLogs();
+          LocalStorageService.settleMonth(selectedYearMonth);
+          LocalStorageService.addSettlementLog(logData);
         } catch (e) {
-          console.warn('Online settle failed, enqueuing', e);
+          console.warn('Online settle failed, fallback to local storage and queue', e);
           SyncQueueService.enqueue('settle_month', { householdId: household.id, yearMonth: selectedYearMonth });
           SyncQueueService.enqueue('add_settlement_log', logData);
           LocalStorageService.settleMonth(selectedYearMonth);

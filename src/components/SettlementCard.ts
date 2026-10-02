@@ -17,6 +17,14 @@ export function renderSettlementCard(
   // この月の全支出が精算済みかどうかの判定
   const isAllSettled = unsettledCount === 0 && monthlyTotalAmount > 0;
   const isEmptyMonth = monthlyTotalAmount === 0;
+  const isActionDisabled = unsettledCount === 0 || isEmptyMonth;
+
+  let settleBtnText = '精算完了にする';
+  if (isEmptyMonth) {
+    settleBtnText = '支出なし';
+  } else if (isAllSettled) {
+    settleBtnText = '精算済み';
+  }
 
   return `
     <div class="bg-gradient-to-br from-[#2f3e37] via-[#28362f] to-[#202b26] text-white rounded-[28px] p-5 shadow-card relative overflow-hidden">
@@ -116,15 +124,15 @@ export function renderSettlementCard(
         </button>
         <button
           id="btn-settle-all"
-          ${unsettledCount === 0 ? 'disabled' : ''}
+          ${isActionDisabled ? 'disabled' : ''}
           class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl ${
-            unsettledCount === 0
+            isActionDisabled
               ? 'bg-white/10 text-white/40 border border-white/10 cursor-not-allowed'
               : 'bg-gradient-to-r from-[#52796f] to-[#406259] hover:from-[#5e8a7f] hover:to-[#4a6f65] active:scale-[0.98] text-white shadow-md shadow-[#202b26]/30 cursor-pointer'
           } text-xs font-bold transition-all"
         >
-          <i data-lucide="check" class="w-3.5 h-3.5"></i>
-          <span>${unsettledCount === 0 ? '精算済み' : '精算完了にする'}</span>
+          <i data-lucide="${isAllSettled ? 'check-circle' : 'check'}" class="w-3.5 h-3.5"></i>
+          <span>${settleBtnText}</span>
         </button>
       </div>
     </div>

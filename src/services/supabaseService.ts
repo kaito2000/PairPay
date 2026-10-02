@@ -415,18 +415,30 @@ export class SupabaseService {
     const supabase = getSupabaseClient();
     if (!supabase) return false;
 
+    const [year, month] = yearMonth.split('-').map(Number);
+    // 翌月の0日目 = 対象年月の末日（小の月やうるう年2月にも完全対応）
+    const lastDay = new Date(year, month, 0).getDate();
     const startDate = `${yearMonth}-01`;
-    const endDate = `${yearMonth}-31`;
+    const endDate = `${yearMonth}-${String(lastDay).padStart(2, '0')}`;
 
-    const { error } = await supabase
-      .from('expenses')
-      .update({ is_settled: true })
-      .eq('household_id', householdId)
-      .gte('expense_date', startDate)
-      .lte('expense_date', endDate)
-      .eq('is_settled', false);
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .update({ is_settled: true })
+        .eq('household_id', householdId)
+        .gte('expense_date', startDate)
+        .lte('expense_date', endDate)
+        .eq('is_settled', false);
 
-    return !error;
+      if (error) {
+        console.error('Supabase settleMonth error:', error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('Supabase settleMonth exception:', err);
+      return false;
+    }
   }
 
 
