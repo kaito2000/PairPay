@@ -36,7 +36,7 @@ export function renderHeader(
   }
 
   return `
-    <header class="px-4 pt-3 pb-1.5 flex items-center justify-between">
+    <header class="sticky top-0 z-20 bg-[#fbfaf8]/95 backdrop-blur-md border-b border-[#ece8e1] px-4 h-14 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <img
           src="./icon-192.png"
