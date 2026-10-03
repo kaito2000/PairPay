@@ -236,41 +236,18 @@ export class SupabaseService {
     const supabase = getSupabaseClient();
     if (!supabase) return false;
 
-    const updatePayload: Record<string, any> = {
-      name: household.name,
-      user1_name: household.user1_name,
-      user2_name: household.user2_name,
-      ratio_user1: household.ratio_user1,
-      ratio_user2: household.ratio_user2,
-      monthly_budget: typeof household.monthly_budget === 'number' ? household.monthly_budget : null,
-    };
-
     const { error } = await supabase
       .from('households')
-      .update(updatePayload)
-      .eq('id', household.id);
-
-    if (!error) return true;
-
-    // もし monthly_budget カラムが未定義の旧スキーマの場合、除外して再試行
-    if (error.code === '42703' || error.message?.includes('monthly_budget')) {
-      console.warn('monthly_budget column not found on households table, retrying without it');
-      const fallbackPayload = {
+      .update({
         name: household.name,
         user1_name: household.user1_name,
         user2_name: household.user2_name,
         ratio_user1: household.ratio_user1,
         ratio_user2: household.ratio_user2,
-      };
-      const { error: fallbackError } = await supabase
-        .from('households')
-        .update(fallbackPayload)
-        .eq('id', household.id);
-      return !fallbackError;
-    }
+      })
+      .eq('id', household.id);
 
-    console.warn('Failed to update household in Supabase', error);
-    return false;
+    return !error;
   }
 
   /**
@@ -314,6 +291,7 @@ export class SupabaseService {
       expense_date: expenseData.expense_date,
       is_settled: false,
       split_type: expenseData.split_type || 'ratio',
+      tags: expenseData.tags || [],
     };
 
     let { data, error } = await supabase
@@ -322,10 +300,11 @@ export class SupabaseService {
       .select()
       .single();
 
-    // スキーマ未更新環境で split_type カラムが存在しない場合のフォールバック
-    if (error && error.message.includes('split_type')) {
-      console.warn('split_type column might not exist, retrying without split_type');
-      delete payload.split_type;
+    // スキーマ未更新環境で tags または split_type カラムが存在しない場合のフォールバック
+    if (error && (error.message.includes('tags') || error.message.includes('split_type'))) {
+      console.warn('tags or split_type column might not exist, retrying without missing columns');
+      if (error.message.includes('tags')) delete payload.tags;
+      if (error.message.includes('split_type')) delete payload.split_type;
       const retryResult = await supabase.from('expenses').insert(payload).select().single();
       data = retryResult.data;
       error = retryResult.error;
@@ -369,6 +348,7 @@ export class SupabaseService {
       expense_date: expense.expense_date,
       is_settled: expense.is_settled,
       split_type: expense.split_type || 'ratio',
+      tags: expense.tags || [],
     };
 
     let { error } = await supabase
@@ -376,8 +356,9 @@ export class SupabaseService {
       .update(updatePayload)
       .eq('id', expense.id);
 
-    if (error && error.message.includes('split_type')) {
-      delete updatePayload.split_type;
+    if (error && (error.message.includes('tags') || error.message.includes('split_type'))) {
+      if (error.message.includes('tags')) delete updatePayload.tags;
+      if (error.message.includes('split_type')) delete updatePayload.split_type;
       const retryResult = await supabase
         .from('expenses')
         .update(updatePayload)

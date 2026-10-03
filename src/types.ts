@@ -29,6 +29,7 @@ export interface Expense {
   expense_date: string; // 'YYYY-MM-DD'
   is_settled: boolean;
   split_type?: SplitType; // デフォルト: 'ratio'
+  tags?: string[]; // タグ (例: ['旅行', '家具'])
   created_at: string;
 }
 
@@ -87,7 +88,6 @@ export interface Household {
   user2_name: string; // デフォルト: '妻'
   ratio_user1: number; // 夫の負担割合 (0〜100, デフォルト: 50)
   ratio_user2: number; // 妻の負担割合 (0〜100, デフォルト: 50)
-  monthly_budget?: number; // 毎月の生活費目標予算 (円)
   created_at: string;
 }
 
@@ -98,6 +98,7 @@ export interface QuickPreset {
   paid_by_name: string;
   split_type: SplitType;
   default_amount?: number;
+  tags?: string[];
   icon?: string;
   count?: number;
 }

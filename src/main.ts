@@ -64,7 +64,7 @@ import { renderSettlementHistoryModal } from './components/SettlementHistoryModa
 import { renderRecurringModal } from './components/RecurringModal.ts';
 import { downloadExpensesCsv } from './utils/csv.ts';
 import { SyncQueueService } from './services/syncQueue.ts';
-import { getQuickPresets } from './logic/preset.ts';
+import { getQuickPresets, getAllTags, parseTagsInput } from './logic/preset.ts';
 
 // アプリケーション状態
 let household: Household = LocalStorageService.getHousehold();
@@ -73,6 +73,7 @@ let settlementLogs: SettlementLog[] = LocalStorageService.getSettlementLogs();
 let recurringTemplates: RecurringTemplate[] = LocalStorageService.getRecurringTemplates();
 let selectedYearMonth: string = getCurrentYearMonth();
 let showAllExpenses = true;
+let selectedTag: string | null = null;
 let isCloudSyncActive = false;
 let isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
@@ -196,6 +197,7 @@ function renderApp() {
 
   // よく使うクイックプリセット (過去の支出実績から抽出)
   const quickPresets = getQuickPresets(expenses, household);
+  const availableTags = getAllTags(expenses);
 
   // 選択月に対する精算計算
   const settlementSummary = calculateSettlement(unsettledInMonth, household);
@@ -215,9 +217,9 @@ function renderApp() {
         user2TotalPaid
       )}
       ${renderCategoryBar(monthlyExpenses, selectedMonthLabel)}
-      ${renderExpenseList(monthlyExpenses, household, showAllExpenses, selectedMonthLabel)}
+      ${renderExpenseList(monthlyExpenses, household, showAllExpenses, selectedMonthLabel, selectedTag)}
     </main>
-    ${renderExpenseModal(household, quickPresets)}
+    ${renderExpenseModal(household, quickPresets, availableTags)}
     ${renderSettingsModal(household, supabaseConfig, isCloudSyncActive, selectedYearMonth)}
     ${renderSettlementHistoryModal(settlementLogs, household, expenses)}
     ${renderRecurringModal(recurringTemplates, household, selectedYearMonth)}
@@ -340,6 +342,7 @@ function attachEventListeners(
     const btnHeaderSaveText = document.getElementById('btn-header-save-text');
     const titleInput = document.getElementById('input-title') as HTMLInputElement;
     const dateInput = document.getElementById('input-date') as HTMLInputElement;
+    const tagsInput = document.getElementById('input-tags') as HTMLInputElement;
     const inputPayer = document.getElementById('input-payer') as HTMLInputElement;
     const inputCategory = document.getElementById('input-category') as HTMLInputElement;
     const inputSplitType = document.getElementById('input-split-type') as HTMLInputElement;
@@ -380,6 +383,9 @@ function attachEventListeners(
 
       if (titleInput) titleInput.value = exp.title || '';
       if (dateInput) dateInput.value = exp.expense_date;
+      if (tagsInput) {
+        tagsInput.value = exp.tags && exp.tags.length > 0 ? exp.tags.join(', ') : '';
+      }
 
       updateSplitUI(exp.split_type || 'ratio');
 
@@ -420,6 +426,7 @@ function attachEventListeners(
       currentAmountStr = '0';
       updateAmountDisplay();
       if (titleInput) titleInput.value = '';
+      if (tagsInput) tagsInput.value = '';
 
       updateSplitUI('ratio');
 
@@ -564,6 +571,34 @@ function attachEventListeners(
       const split = (btn.dataset.split || 'ratio') as SplitType;
       const amount = parseInt(btn.dataset.amount || '0', 10);
       applyPresetData({ title, category, payer, split, amount });
+    });
+  });
+
+  // タグ候補チップス (タップで #input-tags に追加・トグル)
+  document.querySelectorAll<HTMLButtonElement>('.tag-toggle-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tag = btn.dataset.tagChip;
+      if (!tag) return;
+      const tagsInput = document.getElementById('input-tags') as HTMLInputElement;
+      if (!tagsInput) return;
+
+      const currentTags = parseTagsInput(tagsInput.value);
+      const idx = currentTags.indexOf(tag);
+      if (idx >= 0) {
+        currentTags.splice(idx, 1);
+      } else {
+        currentTags.push(tag);
+      }
+      tagsInput.value = currentTags.join(', ');
+    });
+  });
+
+  // 支出一覧のタグフィルター切り替え
+  document.querySelectorAll<HTMLButtonElement>('[data-filter-tag]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tag = btn.dataset.filterTag || null;
+      selectedTag = tag;
+      renderApp();
     });
   });
 
@@ -737,6 +772,8 @@ function attachEventListeners(
       const expenseDate = dateInput.value || new Date().toISOString().split('T')[0];
       const inputExpenseId = (document.getElementById('input-expense-id') as HTMLInputElement)?.value;
       const splitType = (splitInput?.value as SplitType) || 'ratio';
+      const tagsInput = document.getElementById('input-tags') as HTMLInputElement;
+      const parsedTags = parseTagsInput(tagsInput?.value || '');
 
       if (inputExpenseId) {
         // 既存の支出を編集・更新
@@ -751,6 +788,7 @@ function attachEventListeners(
           expense_date: expenseDate,
           is_settled: existing ? existing.is_settled : false,
           split_type: splitType,
+          tags: parsedTags,
           created_at: existing ? existing.created_at : new Date().toISOString(),
         };
 
@@ -789,6 +827,7 @@ function attachEventListeners(
           expense_date: expenseDate,
           is_settled: false,
           split_type: splitType,
+          tags: parsedTags,
         };
 
         if (isCloudSyncActive && isOnline) {

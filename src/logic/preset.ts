@@ -134,3 +134,44 @@ export function getQuickPresets(
 
   return results.slice(0, maxItems);
 }
+
+/**
+ * 支出リストから使用されているタグの一覧を抽出（出現頻度順）
+ */
+export function getAllTags(expenses: Expense[]): string[] {
+  const countMap = new Map<string, number>();
+
+  for (const exp of expenses) {
+    if (exp.tags && Array.isArray(exp.tags)) {
+      for (const t of exp.tags) {
+        const cleaned = t.trim().replace(/^#+/, '');
+        if (cleaned) {
+          countMap.set(cleaned, (countMap.get(cleaned) || 0) + 1);
+        }
+      }
+    }
+  }
+
+  // 頻度順にソート
+  return Array.from(countMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map((e) => e[0]);
+}
+
+/**
+ * ユーザー入力文字列（カンマ・空白・#混在）を配列に正規化
+ * 例: "#旅行, 家具  #記念日" -> ["旅行", "家具", "記念日"]
+ */
+export function parseTagsInput(inputStr: string): string[] {
+  if (!inputStr) return [];
+  const parts = inputStr.split(/[\s,、，#]+/);
+  const result: string[] = [];
+  for (const p of parts) {
+    const trimmed = p.trim();
+    if (trimmed && !result.includes(trimmed)) {
+      result.push(trimmed);
+    }
+  }
+  return result;
+}
+

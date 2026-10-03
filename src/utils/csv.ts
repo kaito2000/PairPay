@@ -37,6 +37,7 @@ export function generateExpensesCsv(expenses: Expense[], household: Household): 
   const headers = [
     '日付',
     'タイトル/メモ',
+    'タグ',
     '金額',
     'カテゴリ',
     '立替者',
@@ -49,10 +50,12 @@ export function generateExpensesCsv(expenses: Expense[], household: Household): 
     const categoryLabel = CATEGORIES[exp.category]?.label || exp.category;
     const splitLabel = getSplitTypeLabel(exp.split_type, household);
     const settledLabel = exp.is_settled ? '精算済' : '未精算';
+    const tagsStr = exp.tags && exp.tags.length > 0 ? exp.tags.join(' ') : '';
 
     return [
       escapeCsvValue(exp.expense_date),
       escapeCsvValue(exp.title || ''),
+      escapeCsvValue(tagsStr),
       escapeCsvValue(exp.amount),
       escapeCsvValue(categoryLabel),
       escapeCsvValue(exp.paid_by_name),

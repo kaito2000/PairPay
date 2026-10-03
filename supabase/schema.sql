@@ -299,6 +299,8 @@ with check (
 );
 
 -- ==============================================================================
--- 7. 既存環境向けマイグレーション (monthly_budget 追加)
+-- 7. 既存環境向けマイグレーション
 -- ==============================================================================
 alter table public.households add column if not exists monthly_budget integer;
+alter table public.expenses add column if not exists tags text[] default array[]::text[];
+

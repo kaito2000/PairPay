@@ -1,7 +1,17 @@
 import { CATEGORIES, CategoryType, Household, QuickPreset } from '../types.ts';
 
-export function renderExpenseModal(household: Household, presets: QuickPreset[] = []): string {
+export function renderExpenseModal(
+  household: Household,
+  presets: QuickPreset[] = [],
+  availableTags: string[] = []
+): string {
   const todayStr = new Date().toISOString().split('T')[0];
+
+  const defaultSuggestedTags = ['旅行', '記念日', '家具家電'];
+  const suggestedTags =
+    availableTags.length > 0
+      ? Array.from(new Set([...availableTags, ...defaultSuggestedTags])).slice(0, 5)
+      : defaultSuggestedTags;
 
   return `
     <!-- 開くための固定フローティングトリガー (画面下部) -->
@@ -245,6 +255,41 @@ export function renderExpenseModal(household: Household, presets: QuickPreset[] 
                 class="w-full h-9 px-2 bg-[#fbfaf8] border border-[#ded9ce] rounded-xl text-xs font-medium text-[#2d312e] focus:bg-white focus:border-[#52796f] outline-none transition-all box-border cursor-pointer appearance-none"
               />
             </div>
+          </div>
+
+          <!-- 4.5 タグ（イベント・特別用途） -->
+          <div class="space-y-1">
+            <div class="relative w-full">
+              <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#808781]">#</span>
+              <input
+                type="text"
+                id="input-tags"
+                placeholder="タグ（例: 旅行, 記念日, 家具）"
+                class="w-full h-8 pl-6 pr-3 bg-[#fbfaf8] border border-[#ded9ce] rounded-xl text-[11px] text-[#2d312e] focus:bg-white focus:border-[#52796f] outline-none transition-all placeholder-[#a8a29e] box-border"
+              />
+            </div>
+            ${
+              suggestedTags.length > 0
+                ? `
+              <div class="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+                <span class="text-[9px] font-bold text-[#808781] shrink-0 mr-0.5">タグ候補:</span>
+                ${suggestedTags
+                  .map(
+                    (tag) => `
+                  <button
+                    type="button"
+                    data-tag-chip="${tag}"
+                    class="tag-toggle-btn px-2 py-0.5 rounded-lg bg-[#fbfaf8] border border-[#ded9ce] hover:border-[#52796f] text-[9.5px] font-bold text-[#5c635e] active:scale-95 transition-all shrink-0 cursor-pointer"
+                  >
+                    #${tag}
+                  </button>
+                `
+                  )
+                  .join('')}
+              </div>
+            `
+                : ''
+            }
           </div>
 
           <!-- 5. カスタムテンキー (高さを40pxに引き締め、タップしやすさと省スペースを両立) -->

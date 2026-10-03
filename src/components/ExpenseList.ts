@@ -6,34 +6,89 @@ export function renderExpenseList(
   monthlyExpenses: Expense[],
   household: Household,
   showAll: boolean,
-  selectedMonthLabel: string
+  selectedMonthLabel: string,
+  selectedTag?: string | null
 ): string {
-  const filtered = showAll ? monthlyExpenses : monthlyExpenses.filter((e) => !e.is_settled);
+  // その月のすべてのユニークタグを抽出
+  const monthlyTags = Array.from(
+    new Set(
+      monthlyExpenses.flatMap((e) => (e.tags && Array.isArray(e.tags) ? e.tags : []))
+    )
+  );
+
+  let filtered = showAll ? monthlyExpenses : monthlyExpenses.filter((e) => !e.is_settled);
+  if (selectedTag) {
+    filtered = filtered.filter((e) => e.tags && e.tags.includes(selectedTag));
+  }
+
   const totalAmount = filtered.reduce((sum, e) => sum + e.amount, 0);
   const dateGroups = groupExpensesByDate(filtered);
 
   return `
     <div class="bg-white rounded-[26px] p-4 border border-[#eeebe4] shadow-soft space-y-3.5">
       <!-- リストヘッダー -->
-      <div class="flex items-center justify-between pb-1 border-b border-[#f4f1ea]">
-        <div class="flex items-center gap-2">
-          <span class="text-xs font-black text-[#2d312e]">${selectedMonthLabel}の支出</span>
-          <span class="text-[10px] font-bold bg-[#f2efe9] text-[#5c635e] px-2 py-0.5 rounded-full">
-            ${filtered.length}件
-          </span>
-          ${
-            filtered.length > 0
-              ? `<span class="text-xs font-black text-[#52796f]">¥${totalAmount.toLocaleString()}</span>`
-              : ''
-          }
+      <div class="space-y-2 pb-1 border-b border-[#f4f1ea]">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-black text-[#2d312e]">${selectedMonthLabel}の支出</span>
+            <span class="text-[10px] font-bold bg-[#f2efe9] text-[#5c635e] px-2 py-0.5 rounded-full">
+              ${filtered.length}件
+            </span>
+            ${
+              filtered.length > 0
+                ? `<span class="text-xs font-black text-[#52796f]">¥${totalAmount.toLocaleString()}</span>`
+                : ''
+            }
+          </div>
+          <button
+            id="btn-toggle-show-all"
+            class="text-[11px] font-bold text-[#52796f] hover:text-[#3d5a53] active:underline flex items-center gap-1 cursor-pointer transition-colors"
+          >
+            <i data-lucide="${showAll ? 'filter' : 'list'}" class="w-3.5 h-3.5"></i>
+            <span>${showAll ? '未精算のみ' : 'すべて表示'}</span>
+          </button>
         </div>
-        <button
-          id="btn-toggle-show-all"
-          class="text-[11px] font-bold text-[#52796f] hover:text-[#3d5a53] active:underline flex items-center gap-1 cursor-pointer transition-colors"
-        >
-          <i data-lucide="${showAll ? 'filter' : 'list'}" class="w-3.5 h-3.5"></i>
-          <span>${showAll ? '未精算のみ' : 'すべて表示'}</span>
-        </button>
+
+        <!-- タグフィルターバー (その月にタグが存在する場合のみ表示) -->
+        ${
+          monthlyTags.length > 0
+            ? `
+          <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-0.5">
+            <button
+              type="button"
+              data-filter-tag=""
+              class="px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all shrink-0 cursor-pointer ${
+                !selectedTag
+                  ? 'bg-[#2d312e] text-white shadow-2xs font-extrabold'
+                  : 'bg-[#f4f1ea] text-[#6d746f] hover:bg-[#ece8e1]'
+              }"
+            >
+              すべて
+            </button>
+            ${monthlyTags
+              .map((tag) => {
+                const isSelected = selectedTag === tag;
+                const count = monthlyExpenses.filter((e) => e.tags?.includes(tag)).length;
+                return `
+                <button
+                  type="button"
+                  data-filter-tag="${escapeHtml(tag)}"
+                  class="px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
+                    isSelected
+                      ? 'bg-[#52796f] text-white shadow-2xs font-extrabold'
+                      : 'bg-[#edf4ee] text-[#426b42] border border-[#c8decb] hover:bg-[#e2ede3]'
+                  }"
+                >
+                  <span>#${escapeHtml(tag)}</span>
+                  <span class="text-[9px] opacity-80 font-mono">(${count})</span>
+                </button>
+              `;
+              })
+              .join('')}
+          </div>
+        `
+            : ''
+        }
       </div>
 
       <!-- 支出コンテンツ -->
@@ -98,9 +153,22 @@ export function renderExpenseList(
                                       : ''
                                   }
                                 </div>
-                                <div class="text-[10px] text-[#8f9690] flex items-center gap-1">
+                                <div class="text-[10px] text-[#8f9690] flex items-center gap-1 flex-wrap">
                                   <span>${cat.label}</span>
                                   ${expense.title ? `<span>•</span><span class="truncate max-w-[100px]">${safeTitle}</span>` : ''}
+                                  ${
+                                    expense.tags && expense.tags.length > 0
+                                      ? expense.tags
+                                          .map(
+                                            (t) => `
+                                      <span class="inline-flex items-center text-[9px] font-bold text-[#52796f] bg-[#edf4ee] px-1.5 py-0.2 rounded border border-[#c8decb]">
+                                        #${escapeHtml(t)}
+                                      </span>
+                                    `
+                                          )
+                                          .join('')
+                                      : ''
+                                  }
                                 </div>
                               </div>
                             </div>
