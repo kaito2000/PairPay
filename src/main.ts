@@ -218,7 +218,7 @@ function renderApp() {
 
     <main class="p-4 space-y-3.5 flex-1 max-w-md mx-auto pb-24">
       <!-- 独立した月切り替えタブ (上部ヘッダーの下に最前面で固定され、スクロールされない) -->
-      <div class="sticky top-14 z-20 bg-[#fbfaf8] py-1.5 -mx-4 px-4 shadow-2xs">
+      <div class="sticky top-14 z-20 bg-[#fbfaf8] py-1 -mx-4 px-4">
         ${renderMonthNavigator(selectedYearMonth, currentYM, availableMonths)}
       </div>
 
