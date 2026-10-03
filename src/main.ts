@@ -215,7 +215,7 @@ function renderApp() {
     </main>
     ${renderExpenseModal(household)}
     ${renderSettingsModal(household, supabaseConfig, isCloudSyncActive, selectedYearMonth)}
-    ${renderSettlementHistoryModal(settlementLogs)}
+    ${renderSettlementHistoryModal(settlementLogs, household, expenses)}
     ${renderRecurringModal(recurringTemplates, household, selectedYearMonth)}
   `;
 
@@ -833,6 +833,14 @@ function attachEventListeners(
     }
 
     if (confirm(`${selectedMonthLabel}の未精算支出（${unsettledCountInMonth}件）をすべて精算済みにしますか？`)) {
+      const monthlyExps = expenses.filter((e) => e.expense_date.startsWith(selectedYearMonth));
+      const u1TotalPaid = monthlyExps
+        .filter((e) => e.paid_by_name === household.user1_name)
+        .reduce((sum, e) => sum + e.amount, 0);
+      const u2TotalPaid = monthlyExps
+        .filter((e) => e.paid_by_name === household.user2_name)
+        .reduce((sum, e) => sum + e.amount, 0);
+
       const logData = {
         household_id: household.id,
         year_month: selectedYearMonth,
@@ -842,6 +850,10 @@ function attachEventListeners(
         amount: settlementSummary.transferAmount,
         total_amount: settlementSummary.totalAmount,
         expense_count: unsettledCountInMonth,
+        user1_name: household.user1_name,
+        user1_amount: u1TotalPaid,
+        user2_name: household.user2_name,
+        user2_amount: u2TotalPaid,
       };
 
       if (isCloudSyncActive && isOnline) {
@@ -1137,7 +1149,8 @@ function attachEventListeners(
   });
 
   document.querySelectorAll<HTMLButtonElement>('.btn-delete-log').forEach((btn) => {
-    btn.addEventListener('click', async () => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
       const id = btn.dataset.deleteLogId;
       if (!id) return;
       if (confirm('この精算履歴を削除しますか？')) {
@@ -1145,6 +1158,22 @@ function attachEventListeners(
         settlementLogs = settlementLogs.filter((l) => l.id !== id);
         renderApp();
         showToast('精算履歴を削除しました');
+      }
+    });
+  });
+
+  // 精算履歴アイテムクリックで該当月の画面へジャンプ
+  document.querySelectorAll<HTMLElement>('.settlement-history-item').forEach((item) => {
+    item.addEventListener('click', (e) => {
+      // 削除ボタンが押された場合はジャンプしない
+      if ((e.target as HTMLElement).closest('.btn-delete-log')) return;
+
+      const ym = item.dataset.jumpYm;
+      if (ym) {
+        selectedYearMonth = ym;
+        historyModalOverlay?.classList.add('hidden');
+        renderApp();
+        showToast(`${ym} の精算画面に移動しました 📅`);
       }
     });
   });

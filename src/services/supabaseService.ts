@@ -566,6 +566,32 @@ export class SupabaseService {
     const supabase = getSupabaseClient();
     if (!supabase) return null;
 
+    const fullPayload: any = {
+      household_id: logData.household_id,
+      year_month: logData.year_month,
+      settled_at: logData.settled_at,
+      sender_name: logData.sender_name,
+      receiver_name: logData.receiver_name,
+      amount: logData.amount,
+      total_amount: logData.total_amount,
+      expense_count: logData.expense_count,
+    };
+    if (logData.user1_name) fullPayload.user1_name = logData.user1_name;
+    if (typeof logData.user1_amount === 'number') fullPayload.user1_amount = logData.user1_amount;
+    if (logData.user2_name) fullPayload.user2_name = logData.user2_name;
+    if (typeof logData.user2_amount === 'number') fullPayload.user2_amount = logData.user2_amount;
+
+    const basePayload = {
+      household_id: logData.household_id,
+      year_month: logData.year_month,
+      settled_at: logData.settled_at,
+      sender_name: logData.sender_name,
+      receiver_name: logData.receiver_name,
+      amount: logData.amount,
+      total_amount: logData.total_amount,
+      expense_count: logData.expense_count,
+    };
+
     try {
       // 既存の同一月のログがあるか確認して1件に集約（連打されても重複しない）
       const { data: existing } = await supabase
@@ -576,47 +602,52 @@ export class SupabaseService {
         .limit(1);
 
       if (existing && existing.length > 0) {
-        const { data, error } = await supabase
+        let updateRes = await supabase
           .from('settlement_logs')
-          .update({
-            settled_at: logData.settled_at,
-            sender_name: logData.sender_name,
-            receiver_name: logData.receiver_name,
-            amount: logData.amount,
-            total_amount: logData.total_amount,
-            expense_count: logData.expense_count,
-          })
+          .update(fullPayload)
           .eq('id', existing[0].id)
           .select()
           .single();
 
-        if (error) {
-          console.warn('Failed to update existing settlement log', error);
+        if (updateRes.error) {
+          // カラムがまだDBに追加されていない場合のフォールバック
+          console.warn('Update with extra columns failed, retrying with base columns', updateRes.error);
+          updateRes = await supabase
+            .from('settlement_logs')
+            .update(basePayload)
+            .eq('id', existing[0].id)
+            .select()
+            .single();
+        }
+
+        if (updateRes.error) {
+          console.warn('Failed to update existing settlement log', updateRes.error);
           return null;
         }
-        return data as SettlementLog;
+        return updateRes.data as SettlementLog;
       }
 
-      const { data, error } = await supabase
+      let insertRes = await supabase
         .from('settlement_logs')
-        .insert({
-          household_id: logData.household_id,
-          year_month: logData.year_month,
-          settled_at: logData.settled_at,
-          sender_name: logData.sender_name,
-          receiver_name: logData.receiver_name,
-          amount: logData.amount,
-          total_amount: logData.total_amount,
-          expense_count: logData.expense_count,
-        })
+        .insert(fullPayload)
         .select()
         .single();
 
-      if (error) {
-        console.warn('Failed to add settlement log to Supabase', error);
+      if (insertRes.error) {
+        // カラムがまだDBに追加されていない場合のフォールバック
+        console.warn('Insert with extra columns failed, retrying with base columns', insertRes.error);
+        insertRes = await supabase
+          .from('settlement_logs')
+          .insert(basePayload)
+          .select()
+          .single();
+      }
+
+      if (insertRes.error) {
+        console.warn('Failed to add settlement log to Supabase', insertRes.error);
         return null;
       }
-      return data as SettlementLog;
+      return insertRes.data as SettlementLog;
     } catch (e) {
       console.warn('Error adding settlement log to Supabase', e);
       return null;

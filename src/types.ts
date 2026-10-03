@@ -42,6 +42,10 @@ export interface SettlementLog {
   amount: number; // 精算送金額
   total_amount: number; // 対象月の総支出額
   expense_count: number; // 対象支出件数
+  user1_name?: string; // 夫の名前
+  user1_amount?: number; // 夫の立替総額
+  user2_name?: string; // 妻の名前
+  user2_amount?: number; // 妻の立替総額
   created_at?: string;
 }
 

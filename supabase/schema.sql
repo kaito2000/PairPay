@@ -224,8 +224,18 @@ create table if not exists public.settlement_logs (
   amount integer not null check (amount >= 0),
   total_amount integer not null default 0,
   expense_count integer not null default 0,
+  user1_name text,
+  user1_amount integer default 0,
+  user2_name text,
+  user2_amount integer default 0,
   created_at timestamp with time zone default now()
 );
+
+-- 既存テーブルへのカラム追加（未適用環境への対応）
+alter table public.settlement_logs add column if not exists user1_name text;
+alter table public.settlement_logs add column if not exists user1_amount integer default 0;
+alter table public.settlement_logs add column if not exists user2_name text;
+alter table public.settlement_logs add column if not exists user2_amount integer default 0;
 
 create index if not exists idx_settlement_logs_household on public.settlement_logs(household_id, settled_at desc);
 

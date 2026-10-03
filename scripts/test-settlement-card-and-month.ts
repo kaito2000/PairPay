@@ -186,4 +186,81 @@ assert.strictEqual(exp2.is_settled, false, '9月の支出2は未精算に戻る�
 assert.strictEqual(exp3.is_settled, true, '8月の支出3は精算済みのまま維持されるべき');
 console.log('  精算取消 (unsettleMonth): ALL PASSED ✅\n');
 
+// 5. 精算履歴モーダル (data-jump-ym & 立替額表示) テスト
+console.log('5. 精算履歴モーダル (ジャンプ機能 & 立替額表示) のテスト');
+import { renderSettlementHistoryModal } from '../src/components/SettlementHistoryModal.ts';
+
+const testLogs: SettlementLog[] = [
+  {
+    id: 'log-sep',
+    household_id: 'h1',
+    year_month: '2026-09',
+    settled_at: '2026-09-30T12:00:00Z',
+    sender_name: '妻',
+    receiver_name: '夫',
+    amount: 5000,
+    total_amount: 15000,
+    expense_count: 4,
+    user1_name: '夫',
+    user1_amount: 10000,
+    user2_name: '妻',
+    user2_amount: 5000,
+  },
+  {
+    id: 'log-aug-old',
+    household_id: 'h1',
+    year_month: '2026-08',
+    settled_at: '2026-08-31T12:00:00Z',
+    sender_name: '夫',
+    receiver_name: '妻',
+    amount: 2000,
+    total_amount: 8000,
+    expense_count: 2,
+    // 古いログ (user1_amount 未記録)
+  },
+];
+
+const mockExpensesForHistory = [
+  {
+    id: 'e-aug-1',
+    household_id: 'h1',
+    title: '電気',
+    amount: 5000,
+    category: 'utility' as const,
+    paid_by_name: '夫',
+    expense_date: '2026-08-10',
+    is_settled: true,
+    created_at: '2026-08-10T12:00:00Z',
+  },
+  {
+    id: 'e-aug-2',
+    household_id: 'h1',
+    title: 'ガス',
+    amount: 3000,
+    category: 'utility' as const,
+    paid_by_name: '妻',
+    expense_date: '2026-08-15',
+    is_settled: true,
+    created_at: '2026-08-15T12:00:00Z',
+  },
+];
+
+const historyHtml = renderSettlementHistoryModal(testLogs, mockHousehold, mockExpensesForHistory);
+
+// ジャンプ用属性の検証
+assert(historyHtml.includes('data-jump-ym="2026-09"'), '9月ログに data-jump-ym="2026-09" が含まれること');
+assert(historyHtml.includes('data-jump-ym="2026-08"'), '8月ログに data-jump-ym="2026-08" が含まれること');
+
+// ログ記録済み立替額の表示検証 (9月)
+assert(historyHtml.includes('夫立替'), '夫立替ラベルが含まれること');
+assert(historyHtml.includes('妻立替'), '妻立替ラベルが含まれること');
+assert(historyHtml.includes('¥10,000'), '記録済みの夫立替額 ¥10,000 が表示されること');
+assert(historyHtml.includes('¥5,000'), '記録済みの妻立替額 ¥5,000 が表示されること');
+
+// 過去ログ自動補完の検証 (8月)
+assert(historyHtml.includes('¥5,000'), '支出から補完された8月の夫立替額 ¥5,000 が表示されること');
+assert(historyHtml.includes('¥3,000'), '支出から補完された8月の妻立替額 ¥3,000 が表示されること');
+
+console.log('  精算履歴モーダル (ジャンプ & 立替額表示): ALL PASSED ✅\n');
+
 console.log('🎉 ALL TESTS COMPLETED SUCCESSFULLY! 🎉');
