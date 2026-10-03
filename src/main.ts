@@ -71,7 +71,7 @@ let expenses: Expense[] = LocalStorageService.getExpenses();
 let settlementLogs: SettlementLog[] = LocalStorageService.getSettlementLogs();
 let recurringTemplates: RecurringTemplate[] = LocalStorageService.getRecurringTemplates();
 let selectedYearMonth: string = getCurrentYearMonth();
-let showAllExpenses = false;
+let showAllExpenses = true;
 let isCloudSyncActive = false;
 let isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
@@ -796,99 +796,105 @@ function attachEventListeners(
   btnSettleAll?.addEventListener('click', async () => {
     const action = btnSettleAll.dataset.action;
 
-    // 精算を取り消す場合 (未精算に戻す)
+    // 精算を取り消す場合 (未精算に戻す & その月の履歴も削除)
     if (action === 'unsettle') {
-      if (confirm(`${selectedMonthLabel}の精算を取り消して、未精算の状態に戻しますか？`)) {
-        if (isCloudSyncActive && isOnline) {
-          try {
-            const success = await SupabaseService.unsettleMonth(household.id, selectedYearMonth);
-            if (!success) {
-              throw new Error(`Supabase unsettleMonth returned false for ${selectedYearMonth}`);
-            }
-            expenses = await SupabaseService.getExpenses();
-            LocalStorageService.unsettleMonth(selectedYearMonth);
-          } catch (e) {
-            console.warn('Online unsettle failed, fallback to local storage and queue', e);
-            SyncQueueService.enqueue('unsettle_month', { householdId: household.id, yearMonth: selectedYearMonth });
-            LocalStorageService.unsettleMonth(selectedYearMonth);
-            expenses = LocalStorageService.getExpenses();
-          }
-        } else {
-          if (isCloudSyncActive) {
-            SyncQueueService.enqueue('unsettle_month', { householdId: household.id, yearMonth: selectedYearMonth });
-          }
-          LocalStorageService.unsettleMonth(selectedYearMonth);
-          expenses = LocalStorageService.getExpenses();
-        }
-        renderApp();
-        showToast(`${selectedMonthLabel}の精算を取り消しました ↩️`);
-      }
-      return;
-    }
-
-    // 精算を完了にする場合
-    if (unsettledCountInMonth === 0) {
-      showToast(`${selectedMonthLabel}に未精算の支出はありません`, 'info');
-      return;
-    }
-
-    if (confirm(`${selectedMonthLabel}の未精算支出（${unsettledCountInMonth}件）をすべて精算済みにしますか？`)) {
-      const monthlyExps = expenses.filter((e) => e.expense_date.startsWith(selectedYearMonth));
-      const u1TotalPaid = monthlyExps
-        .filter((e) => e.paid_by_name === household.user1_name)
-        .reduce((sum, e) => sum + e.amount, 0);
-      const u2TotalPaid = monthlyExps
-        .filter((e) => e.paid_by_name === household.user2_name)
-        .reduce((sum, e) => sum + e.amount, 0);
-
-      const logData = {
-        household_id: household.id,
-        year_month: selectedYearMonth,
-        settled_at: new Date().toISOString(),
-        sender_name: settlementSummary.senderName || household.user2_name,
-        receiver_name: settlementSummary.receiverName || household.user1_name,
-        amount: settlementSummary.transferAmount,
-        total_amount: settlementSummary.totalAmount,
-        expense_count: unsettledCountInMonth,
-        user1_name: household.user1_name,
-        user1_amount: u1TotalPaid,
-        user2_name: household.user2_name,
-        user2_amount: u2TotalPaid,
-      };
-
       if (isCloudSyncActive && isOnline) {
         try {
-          const success = await SupabaseService.settleMonth(household.id, selectedYearMonth);
+          const success = await SupabaseService.unsettleMonth(household.id, selectedYearMonth);
           if (!success) {
-            throw new Error(`Supabase settleMonth returned false for ${selectedYearMonth}`);
+            throw new Error(`Supabase unsettleMonth returned false for ${selectedYearMonth}`);
           }
-          await SupabaseService.addSettlementLog(logData);
+          await SupabaseService.deleteSettlementLogByMonth(household.id, selectedYearMonth);
           expenses = await SupabaseService.getExpenses();
           settlementLogs = await SupabaseService.getSettlementLogs();
-          LocalStorageService.settleMonth(selectedYearMonth);
-          LocalStorageService.addSettlementLog(logData);
+          LocalStorageService.unsettleMonth(selectedYearMonth);
+          LocalStorageService.deleteSettlementLogByMonth(selectedYearMonth);
         } catch (e) {
-          console.warn('Online settle failed, fallback to local storage and queue', e);
-          SyncQueueService.enqueue('settle_month', { householdId: household.id, yearMonth: selectedYearMonth });
-          SyncQueueService.enqueue('add_settlement_log', logData);
-          LocalStorageService.settleMonth(selectedYearMonth);
-          LocalStorageService.addSettlementLog(logData);
+          console.warn('Online unsettle failed, fallback to local storage and queue', e);
+          SyncQueueService.enqueue('unsettle_month', { householdId: household.id, yearMonth: selectedYearMonth });
+          SyncQueueService.enqueue('delete_settlement_log_by_month', { householdId: household.id, yearMonth: selectedYearMonth });
+          LocalStorageService.unsettleMonth(selectedYearMonth);
+          LocalStorageService.deleteSettlementLogByMonth(selectedYearMonth);
           expenses = LocalStorageService.getExpenses();
           settlementLogs = LocalStorageService.getSettlementLogs();
         }
       } else {
         if (isCloudSyncActive) {
-          SyncQueueService.enqueue('settle_month', { householdId: household.id, yearMonth: selectedYearMonth });
-          SyncQueueService.enqueue('add_settlement_log', logData);
+          SyncQueueService.enqueue('unsettle_month', { householdId: household.id, yearMonth: selectedYearMonth });
+          SyncQueueService.enqueue('delete_settlement_log_by_month', { householdId: household.id, yearMonth: selectedYearMonth });
         }
+        LocalStorageService.unsettleMonth(selectedYearMonth);
+        LocalStorageService.deleteSettlementLogByMonth(selectedYearMonth);
+        expenses = LocalStorageService.getExpenses();
+        settlementLogs = LocalStorageService.getSettlementLogs();
+      }
+      renderApp();
+      showToast(`${selectedMonthLabel}の精算を取り消しました ↩️`);
+      return;
+    }
+
+    // 精算を完了にする場合 (ダイアログ不要で即時反映)
+    if (unsettledCountInMonth === 0) {
+      showToast(`${selectedMonthLabel}に未精算の支出はありません`, 'info');
+      return;
+    }
+
+    const monthlyExps = expenses.filter((e) => e.expense_date.startsWith(selectedYearMonth));
+    const u1TotalPaid = monthlyExps
+      .filter((e) => e.paid_by_name === household.user1_name)
+      .reduce((sum, e) => sum + e.amount, 0);
+    const u2TotalPaid = monthlyExps
+      .filter((e) => e.paid_by_name === household.user2_name)
+      .reduce((sum, e) => sum + e.amount, 0);
+
+    const logData = {
+      household_id: household.id,
+      year_month: selectedYearMonth,
+      settled_at: new Date().toISOString(),
+      sender_name: settlementSummary.senderName || household.user2_name,
+      receiver_name: settlementSummary.receiverName || household.user1_name,
+      amount: settlementSummary.transferAmount,
+      total_amount: settlementSummary.totalAmount,
+      expense_count: unsettledCountInMonth,
+      user1_name: household.user1_name,
+      user1_amount: u1TotalPaid,
+      user2_name: household.user2_name,
+      user2_amount: u2TotalPaid,
+    };
+
+    if (isCloudSyncActive && isOnline) {
+      try {
+        const success = await SupabaseService.settleMonth(household.id, selectedYearMonth);
+        if (!success) {
+          throw new Error(`Supabase settleMonth returned false for ${selectedYearMonth}`);
+        }
+        await SupabaseService.addSettlementLog(logData);
+        expenses = await SupabaseService.getExpenses();
+        settlementLogs = await SupabaseService.getSettlementLogs();
+        LocalStorageService.settleMonth(selectedYearMonth);
+        LocalStorageService.addSettlementLog(logData);
+      } catch (e) {
+        console.warn('Online settle failed, fallback to local storage and queue', e);
+        SyncQueueService.enqueue('settle_month', { householdId: household.id, yearMonth: selectedYearMonth });
+        SyncQueueService.enqueue('add_settlement_log', logData);
         LocalStorageService.settleMonth(selectedYearMonth);
         LocalStorageService.addSettlementLog(logData);
         expenses = LocalStorageService.getExpenses();
         settlementLogs = LocalStorageService.getSettlementLogs();
       }
-      renderApp();
-      showToast(`${selectedMonthLabel}の精算を完了＆履歴に記録しました！✨`);
+    } else {
+      if (isCloudSyncActive) {
+        SyncQueueService.enqueue('settle_month', { householdId: household.id, yearMonth: selectedYearMonth });
+        SyncQueueService.enqueue('add_settlement_log', logData);
+      }
+      LocalStorageService.settleMonth(selectedYearMonth);
+      LocalStorageService.addSettlementLog(logData);
+      expenses = LocalStorageService.getExpenses();
+      settlementLogs = LocalStorageService.getSettlementLogs();
     }
+    showAllExpenses = true; // 精算後も支出一覧を消さずに表示
+    renderApp();
+    showToast(`${selectedMonthLabel}の精算を完了＆履歴に記録しました！✨`);
   });
 
   // 9. 支出リスト表示切替（未精算のみ / すべて）
@@ -1371,6 +1377,8 @@ async function flushSyncQueue() {
         return await SupabaseService.unsettleMonth(item.payload.householdId, item.payload.yearMonth);
       case 'add_settlement_log':
         return !!(await SupabaseService.addSettlementLog(item.payload));
+      case 'delete_settlement_log_by_month':
+        return await SupabaseService.deleteSettlementLogByMonth(item.payload.householdId, item.payload.yearMonth);
       case 'save_recurring':
         return !!(await SupabaseService.addRecurringTemplate(item.payload));
       case 'delete_recurring':

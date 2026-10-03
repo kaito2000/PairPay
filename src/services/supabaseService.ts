@@ -654,6 +654,28 @@ export class SupabaseService {
     }
   }
 
+  static async deleteSettlementLogByMonth(householdId: string, yearMonth: string): Promise<boolean> {
+    const supabase = getSupabaseClient();
+    if (!supabase) return false;
+
+    try {
+      const { error } = await supabase
+        .from('settlement_logs')
+        .delete()
+        .eq('household_id', householdId)
+        .eq('year_month', yearMonth);
+
+      if (error) {
+        console.warn('Failed to delete settlement log by month from Supabase', error);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.warn('Error deleting settlement log by month', e);
+      return false;
+    }
+  }
+
   // ==========================================
   // 固定費テンプレート (Recurring Templates)
   // ==========================================

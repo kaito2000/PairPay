@@ -263,4 +263,41 @@ assert(historyHtml.includes('¥3,000'), '支出から補完された8月の妻�
 
 console.log('  精算履歴モーダル (ジャンプ & 立替額表示): ALL PASSED ✅\n');
 
+// 6. 精算取消時の精算履歴削除 (deleteSettlementLogByMonth) テスト
+console.log('6. 精算取消時の履歴削除 (deleteSettlementLogByMonth) のテスト');
+LocalStorageService.saveSettlementLogs([
+  {
+    household_id: 'h1',
+    year_month: '2026-09',
+    settled_at: '2026-09-30T12:00:00Z',
+    sender_name: '妻',
+    receiver_name: '夫',
+    amount: 5000,
+    total_amount: 15000,
+    expense_count: 4,
+  },
+  {
+    household_id: 'h1',
+    year_month: '2026-08',
+    settled_at: '2026-08-31T12:00:00Z',
+    sender_name: '夫',
+    receiver_name: '妻',
+    amount: 2000,
+    total_amount: 8000,
+    expense_count: 2,
+  },
+]);
+
+assert.strictEqual(LocalStorageService.getSettlementLogs().length, 2, '初期状態で2件のログが存在すること');
+
+// 2026-09 の精算ログを削除
+LocalStorageService.deleteSettlementLogByMonth('2026-09');
+
+const remainingLogs = LocalStorageService.getSettlementLogs();
+assert.strictEqual(remainingLogs.length, 1, '削除後は1件になっていること');
+assert.strictEqual(remainingLogs[0].year_month, '2026-08', '8月のログのみ残っていること');
+assert(!remainingLogs.some((l) => l.year_month === '2026-09'), '9月のログは完全に削除されていること');
+console.log('  精算取消時の履歴削除 (deleteSettlementLogByMonth): ALL PASSED ✅\n');
+
 console.log('🎉 ALL TESTS COMPLETED SUCCESSFULLY! 🎉');
+

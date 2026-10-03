@@ -218,6 +218,11 @@ export class LocalStorageService {
     this.saveSettlementLogs(logs);
   }
 
+  static deleteSettlementLogByMonth(yearMonth: string): void {
+    const logs = this.getSettlementLogs().filter((l) => l.year_month !== yearMonth);
+    this.saveSettlementLogs(logs);
+  }
+
   // ==========================================
   // 固定費・定期支出テンプレート (Recurring Templates)
   // ==========================================

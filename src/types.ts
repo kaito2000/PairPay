@@ -68,6 +68,7 @@ export type SyncQueueAction =
   | 'settle_month'
   | 'unsettle_month'
   | 'add_settlement_log'
+  | 'delete_settlement_log_by_month'
   | 'save_recurring'
   | 'delete_recurring';
 
