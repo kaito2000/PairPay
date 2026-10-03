@@ -1,6 +1,7 @@
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../supabase.ts';
 import { Expense, Household, RecurringTemplate, SettlementLog } from '../types.ts';
+import { hydrateExpensesTags, hydrateExpenseTags, encodeTitleWithTags, saveLocalTags } from '../utils/tagSync.ts';
 
 export class SupabaseService {
   private static realtimeChannel: RealtimeChannel | null = null;
@@ -272,7 +273,7 @@ export class SupabaseService {
       return [];
     }
 
-    return (data || []) as Expense[];
+    return hydrateExpensesTags((data || []) as Expense[]);
   }
 
   /**
@@ -282,9 +283,12 @@ export class SupabaseService {
     const supabase = getSupabaseClient();
     if (!supabase) return null;
 
+    // tags カラムがないDBでも他端末にタグを同期できるよう、title にメタデータとして埋め込み
+    const encodedTitle = encodeTitleWithTags(expenseData.title, expenseData.tags);
+
     const payload: any = {
       household_id: expenseData.household_id,
-      title: expenseData.title,
+      title: encodedTitle,
       amount: expenseData.amount,
       category: expenseData.category,
       paid_by_name: expenseData.paid_by_name,
@@ -315,7 +319,14 @@ export class SupabaseService {
       return null;
     }
 
-    return data as Expense;
+    if (data) {
+      if (expenseData.tags && expenseData.tags.length > 0) {
+        saveLocalTags(data.id, expenseData.tags);
+      }
+      return hydrateExpenseTags(data as Expense);
+    }
+
+    return null;
   }
 
   /**
@@ -340,8 +351,11 @@ export class SupabaseService {
     const supabase = getSupabaseClient();
     if (!supabase) return false;
 
+    // tags カラムがないDBでも他端末にタグを同期できるよう、title にメタデータとして埋め込み
+    const encodedTitle = encodeTitleWithTags(expense.title, expense.tags);
+
     const updatePayload: any = {
-      title: expense.title,
+      title: encodedTitle,
       amount: expense.amount,
       category: expense.category,
       paid_by_name: expense.paid_by_name,
@@ -369,6 +383,10 @@ export class SupabaseService {
     if (error) {
       console.error('Failed to update expense', error);
       return false;
+    }
+
+    if (expense.tags) {
+      saveLocalTags(expense.id, expense.tags);
     }
 
     return true;

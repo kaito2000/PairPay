@@ -1,4 +1,5 @@
 import { Expense, Household, RecurringTemplate, SettlementLog } from '../types.ts';
+import { hydrateExpensesTags, saveLocalTags } from '../utils/tagSync.ts';
 
 const STORAGE_KEY_EXPENSES = 'pairpay_expenses_v1';
 const STORAGE_KEY_HOUSEHOLD = 'pairpay_household_v1';
@@ -82,7 +83,7 @@ export class LocalStorageService {
     try {
       const data = localStorage.getItem(STORAGE_KEY_EXPENSES);
       if (data) {
-        return JSON.parse(data);
+        return hydrateExpensesTags(JSON.parse(data));
       }
     } catch (e) {
       console.error('Failed to load expenses from localStorage', e);
@@ -90,7 +91,7 @@ export class LocalStorageService {
     // 初回はサンプルデータを投入
     const sample = getSampleExpenses();
     this.saveExpenses(sample);
-    return sample;
+    return hydrateExpensesTags(sample);
   }
 
   static saveExpenses(expenses: Expense[]): void {
@@ -104,6 +105,9 @@ export class LocalStorageService {
       id: 'exp-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
       created_at: new Date().toISOString(),
     };
+    if (newExpense.tags && newExpense.tags.length > 0) {
+      saveLocalTags(newExpense.id, newExpense.tags);
+    }
     expenses.unshift(newExpense);
     this.saveExpenses(expenses);
     return newExpense;
@@ -115,6 +119,9 @@ export class LocalStorageService {
   }
 
   static updateExpense(updatedExpense: Expense): void {
+    if (updatedExpense.tags) {
+      saveLocalTags(updatedExpense.id, updatedExpense.tags);
+    }
     const expenses = this.getExpenses().map((e) => (e.id === updatedExpense.id ? updatedExpense : e));
     this.saveExpenses(expenses);
   }
