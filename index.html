@@ -23,8 +23,8 @@
     <link rel="stylesheet" href="./src/styles/main.css" />
   </head>
   <body class="bg-[#fbfaf8] min-h-screen text-[#2d312e] antialiased selection:bg-[#edf4ee] selection:text-[#426b42]">
-    <!-- メインレイアウトコンテナ (スマホ幅最大448pxで中央揃え) -->
-    <div id="app" class="max-w-md mx-auto min-h-screen bg-[#fbfaf8] flex flex-col relative pb-32">
+    <!-- メインレイアウトコンテナ (スマホ幅最大448pxで中央揃え、幅固定) -->
+    <div id="app" class="w-full max-w-md mx-auto min-h-screen bg-[#fbfaf8] flex flex-col relative pb-32">
       <!-- 起動時ローディング画面 (JSダウンロード中・初期化中の白紙化を完全防止) -->
       <div id="initial-loader" class="flex-1 flex flex-col items-center justify-center p-6 text-center select-none" style="min-height: 100vh;">
         <div class="relative flex items-center justify-center mb-4">

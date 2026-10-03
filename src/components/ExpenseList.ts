@@ -28,7 +28,7 @@ export function renderExpenseList(
   const dateGroups = groupExpensesByDate(filtered);
 
   return `
-    <div class="bg-white rounded-[26px] p-4 border border-[#eeebe4] shadow-soft space-y-3.5">
+    <div class="w-full bg-white rounded-[26px] p-4 border border-[#eeebe4] shadow-soft space-y-3.5 box-border">
       <!-- リストヘッダー -->
       <div class="space-y-2 pb-1 border-b border-[#f4f1ea]">
         <div class="flex items-center justify-between">

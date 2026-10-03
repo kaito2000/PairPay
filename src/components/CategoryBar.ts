@@ -5,7 +5,7 @@ export function renderCategoryBar(monthlyExpenses: Expense[], selectedMonthLabel
 
   if (total === 0) {
     return `
-      <div class="bg-white rounded-[24px] p-4 border border-[#eeebe4] shadow-soft">
+      <div class="w-full bg-white rounded-[24px] p-4 border border-[#eeebe4] shadow-soft box-border">
         <div class="text-xs font-bold text-[#3a3f3b] mb-1.5 flex items-center justify-between">
           <span>${selectedMonthLabel}のカテゴリ別内訳</span>
         </div>
@@ -34,7 +34,7 @@ export function renderCategoryBar(monthlyExpenses: Expense[], selectedMonthLabel
     .sort((a, b) => b.amount - a.amount);
 
   return `
-    <div class="bg-white rounded-[24px] p-4 border border-[#eeebe4] shadow-soft">
+    <div class="w-full bg-white rounded-[24px] p-4 border border-[#eeebe4] shadow-soft box-border">
       <div class="flex items-center justify-between mb-3">
         <span class="text-xs font-bold text-[#3a3f3b]">${selectedMonthLabel}のカテゴリ内訳</span>
         <span class="text-[11px] font-semibold text-[#808781]">計 ¥${total.toLocaleString()}</span>

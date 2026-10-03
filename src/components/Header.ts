@@ -36,7 +36,7 @@ export function renderHeader(
   }
 
   return `
-    <header class="sticky top-0 z-30 bg-[#fbfaf8] border-b border-[#ece8e1] px-4 h-14 flex items-center justify-between">
+    <header class="sticky top-0 z-30 bg-[#fbfaf8] border-b border-[#ece8e1] px-4 h-14 flex items-center justify-between w-full box-border">
       <div class="flex items-center gap-2.5">
         <img
           src="./icon-192.png"

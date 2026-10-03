@@ -8,7 +8,7 @@ export function renderMonthNavigator(
   const isCurrentMonth = selectedYearMonth === currentYearMonth;
 
   return `
-    <div class="bg-white rounded-[22px] p-2 px-3 border border-[#ece8e1] shadow-soft flex items-center justify-between gap-2 relative z-20">
+    <div class="w-full bg-white rounded-[22px] p-2 px-3 border border-[#ece8e1] shadow-soft flex items-center justify-between gap-2 relative z-20 box-border">
       <!-- 前月ボタン -->
       <button
         id="btn-prev-month"
@@ -19,9 +19,9 @@ export function renderMonthNavigator(
         <i data-lucide="chevron-left" class="w-5 h-5 pointer-events-none"></i>
       </button>
 
-      <!-- 年月セレクター中央部分 -->
-      <div class="flex items-center gap-2 relative">
-        <div class="relative flex items-center">
+      <!-- 年月セレクター中央部分 (横いっぱいで中央配置) -->
+      <div class="flex items-center gap-1.5 justify-center flex-1 min-w-0">
+        <div class="relative flex items-center max-w-full">
           <select
             id="select-month-dropdown"
             class="appearance-none bg-[#f7f5f0] hover:bg-[#eeebe4] text-[#2d312e] font-extrabold text-sm py-1.5 pl-3.5 pr-8 rounded-xl border border-[#ded9ce] cursor-pointer transition-all outline-none focus:border-[#52796f] focus:ring-1 focus:ring-[#52796f]/20"

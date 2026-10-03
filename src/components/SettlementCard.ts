@@ -43,7 +43,7 @@ export function renderSettlementCard(
   }
 
   return `
-    <div class="bg-gradient-to-br from-[#2f3e37] via-[#28362f] to-[#202b26] text-white rounded-[28px] p-5 shadow-card relative overflow-hidden">
+    <div class="w-full bg-gradient-to-br from-[#2f3e37] via-[#28362f] to-[#202b26] text-white rounded-[28px] p-5 shadow-card relative overflow-hidden box-border">
       <!-- 柔らかなオーガニックブラー背景 -->
       <div class="absolute -top-10 -right-10 w-40 h-40 bg-[#52796f]/25 rounded-full blur-3xl pointer-events-none"></div>
       <div class="absolute -bottom-10 -left-10 w-40 h-40 bg-[#84a98c]/15 rounded-full blur-3xl pointer-events-none"></div>

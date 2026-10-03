@@ -216,11 +216,12 @@ function renderApp() {
     <!-- 独立した上部ヘッダー (画面最上部に固定) -->
     ${renderHeader(isCloudSyncActive, SyncQueueService.getPendingCount(), isOnline)}
 
-    <main class="p-4 space-y-3.5 flex-1 max-w-md mx-auto pb-24">
-      <!-- 独立した月切り替えタブ (上部ヘッダーの下に最前面で固定され、スクロールされない) -->
-      <div class="sticky top-14 z-20 bg-[#fbfaf8] py-1 -mx-4 px-4">
-        ${renderMonthNavigator(selectedYearMonth, currentYM, availableMonths)}
-      </div>
+    <!-- 独立した月切り替えタブ (上部ヘッダーの下に最前面で固定され、横幅固定・横いっぱいに表示) -->
+    <div class="sticky top-14 z-20 bg-[#fbfaf8] py-2 px-4 w-full max-w-md mx-auto box-border">
+      ${renderMonthNavigator(selectedYearMonth, currentYM, availableMonths)}
+    </div>
+
+    <main class="w-full max-w-md mx-auto px-4 pb-24 space-y-3.5 flex-1 box-border">
 
       ${renderSettlementCard(
         settlementSummary,
