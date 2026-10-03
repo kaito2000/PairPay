@@ -59,11 +59,13 @@ import { renderSettlementCard } from './components/SettlementCard.ts';
 import { renderCategoryBar } from './components/CategoryBar.ts';
 import { renderExpenseList } from './components/ExpenseList.ts';
 import { renderExpenseModal } from './components/ExpenseModal.ts';
+import { renderBudgetCard } from './components/BudgetCard.ts';
 import { renderSettingsModal } from './components/SettingsModal.ts';
 import { renderSettlementHistoryModal } from './components/SettlementHistoryModal.ts';
 import { renderRecurringModal } from './components/RecurringModal.ts';
 import { downloadExpensesCsv } from './utils/csv.ts';
 import { SyncQueueService } from './services/syncQueue.ts';
+import { getQuickPresets } from './logic/preset.ts';
 
 // アプリケーション状態
 let household: Household = LocalStorageService.getHousehold();
@@ -193,6 +195,14 @@ function renderApp() {
     .filter((e) => e.paid_by_name === household.user2_name)
     .reduce((sum, e) => sum + e.amount, 0);
 
+  // 前月の支出データ (生活費予算の前月比較用)
+  const prevYM = shiftMonth(selectedYearMonth, -1);
+  const prevMonthExpenses = filterExpensesByMonth(expenses, prevYM);
+  const prevMonthTotal = prevMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // よく使うクイックプリセット (過去の支出実績から抽出)
+  const quickPresets = getQuickPresets(expenses, household);
+
   // 選択月に対する精算計算
   const settlementSummary = calculateSettlement(unsettledInMonth, household);
   const supabaseConfig = getSupabaseConfig();
@@ -210,10 +220,11 @@ function renderApp() {
         user1TotalPaid,
         user2TotalPaid
       )}
+      ${renderBudgetCard(household.monthly_budget, monthlyTotal, prevMonthTotal, selectedMonthLabel)}
       ${renderCategoryBar(monthlyExpenses, selectedMonthLabel)}
       ${renderExpenseList(monthlyExpenses, household, showAllExpenses, selectedMonthLabel)}
     </main>
-    ${renderExpenseModal(household)}
+    ${renderExpenseModal(household, quickPresets)}
     ${renderSettingsModal(household, supabaseConfig, isCloudSyncActive, selectedYearMonth)}
     ${renderSettlementHistoryModal(settlementLogs, household, expenses)}
     ${renderRecurringModal(recurringTemplates, household, selectedYearMonth)}
@@ -466,6 +477,101 @@ function attachEventListeners(
   btnCloseModal?.addEventListener('click', closeModal);
   modalOverlay?.addEventListener('click', (e) => {
     if (e.target === modalOverlay) closeModal();
+  });
+
+  // クイックプリセット反映処理
+  const applyPresetData = (data: {
+    title: string;
+    category: CategoryType;
+    payer: string;
+    split: SplitType;
+    amount?: number;
+  }) => {
+    const titleInput = document.getElementById('input-title') as HTMLInputElement;
+    const inputCategory = document.getElementById('input-category') as HTMLInputElement;
+    const inputPayer = document.getElementById('input-payer') as HTMLInputElement;
+    const inputSplitType = document.getElementById('input-split-type') as HTMLInputElement;
+    const labelSelectedSplit = document.getElementById('label-selected-split');
+    const splitButtons = document.querySelectorAll<HTMLButtonElement>('.split-btn');
+
+    if (titleInput) titleInput.value = data.title;
+
+    if (inputCategory) {
+      inputCategory.value = data.category;
+      catButtons.forEach((b) => {
+        if (b.dataset.category === data.category) {
+          b.classList.add('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-2xs', 'ring-1', 'ring-[#52796f]/30');
+          b.classList.remove('border-[#eeebe4]', 'bg-[#fbfaf8]', 'text-[#6d746f]');
+        } else {
+          b.classList.remove('border-[#52796f]', 'bg-[#edf4ee]', 'text-[#426b42]', 'font-black', 'shadow-2xs', 'ring-1', 'ring-[#52796f]/30');
+          b.classList.add('border-[#eeebe4]', 'bg-[#fbfaf8]', 'text-[#6d746f]');
+        }
+      });
+    }
+
+    if (inputPayer) {
+      inputPayer.value = data.payer;
+      payerButtons.forEach((b) => {
+        const isUser1 = data.payer === household.user1_name;
+        const match = b.dataset.payer === data.payer;
+        if (match) {
+          b.className = `payer-btn py-1.5 rounded-lg text-xs font-extrabold transition-all bg-white ${
+            isUser1 ? 'text-[#3d637d]' : 'text-[#9c4c5e]'
+          } shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer truncate`;
+        } else {
+          b.className =
+            'payer-btn py-1.5 rounded-lg text-xs font-extrabold transition-all text-[#8a857b] hover:text-[#2d312e] flex items-center justify-center gap-1.5 cursor-pointer truncate';
+        }
+      });
+    }
+
+    if (inputSplitType) inputSplitType.value = data.split;
+    if (labelSelectedSplit) {
+      if (data.split === 'equal') labelSelectedSplit.textContent = '等分 (50:50)';
+      else if (data.split === 'user1_full') labelSelectedSplit.textContent = `${household.user1_name}が全額`;
+      else if (data.split === 'user2_full') labelSelectedSplit.textContent = `${household.user2_name}が全額`;
+      else labelSelectedSplit.textContent = `基本比率 (${household.ratio_user1}:${household.ratio_user2})`;
+    }
+    splitButtons.forEach((b) => {
+      const match = b.dataset.split === data.split;
+      if (match) {
+        b.className =
+          'split-btn py-1.5 px-0.5 rounded-lg text-[10px] font-extrabold transition-all bg-white text-[#426b42] shadow-2xs flex flex-col items-center justify-center cursor-pointer';
+      } else {
+        b.className =
+          'split-btn py-1.5 px-0.5 rounded-lg text-[10px] font-bold transition-all text-[#8a857b] hover:text-[#2d312e] flex flex-col items-center justify-center cursor-pointer min-w-0';
+      }
+    });
+
+    if (data.amount && data.amount > 0) {
+      currentAmountStr = data.amount.toString();
+      updateAmountDisplay();
+    }
+  };
+
+  // メイン画面のクイックプリセットボタン (タップで即モーダル展開＆反映)
+  document.querySelectorAll<HTMLButtonElement>('[data-preset-trigger]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const title = btn.dataset.title || '';
+      const category = (btn.dataset.category || 'food') as CategoryType;
+      const payer = btn.dataset.payer || household.user1_name;
+      const split = (btn.dataset.split || 'ratio') as SplitType;
+      const amount = parseInt(btn.dataset.amount || '0', 10);
+      openModal();
+      applyPresetData({ title, category, payer, split, amount });
+    });
+  });
+
+  // モーダル内のクイックプリセット補完ボタン
+  document.querySelectorAll<HTMLButtonElement>('[data-preset-fill]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const title = btn.dataset.title || '';
+      const category = (btn.dataset.category || 'food') as CategoryType;
+      const payer = btn.dataset.payer || household.user1_name;
+      const split = (btn.dataset.split || 'ratio') as SplitType;
+      const amount = parseInt(btn.dataset.amount || '0', 10);
+      applyPresetData({ title, category, payer, split, amount });
+    });
   });
 
 
@@ -913,6 +1019,19 @@ function attachEventListeners(
     settingsModalOverlay?.classList.remove('hidden');
   });
 
+  // 予算設定ボタン（カードから直接設定モーダルを開く）
+  const btnOpenBudgetSetting = document.getElementById('btn-open-budget-setting');
+  btnOpenBudgetSetting?.addEventListener('click', () => {
+    settingsModalOverlay?.classList.remove('hidden');
+    const budgetInput = document.getElementById('settings-monthly-budget') as HTMLInputElement;
+    if (budgetInput) {
+      setTimeout(() => {
+        budgetInput.focus();
+        budgetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  });
+
   btnCloseSettings?.addEventListener('click', () => {
     settingsModalOverlay?.classList.add('hidden');
   });
@@ -952,12 +1071,17 @@ function attachEventListeners(
     const newUser1 = user1Input.value.trim() || '夫';
     const newUser2 = user2Input.value.trim() || '妻';
 
+    const budgetInput = document.getElementById('settings-monthly-budget') as HTMLInputElement;
+    const rawBudget = budgetInput ? parseInt(budgetInput.value, 10) : NaN;
+    const monthlyBudget = !isNaN(rawBudget) && rawBudget > 0 ? rawBudget : undefined;
+
     household = {
       ...household,
       user1_name: newUser1,
       user2_name: newUser2,
       ratio_user1: r1,
       ratio_user2: r2,
+      monthly_budget: monthlyBudget,
     };
 
     // 名前の変更があれば過去の支出履歴の立替者名も一括更新

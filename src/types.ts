@@ -87,8 +87,21 @@ export interface Household {
   user2_name: string; // デフォルト: '妻'
   ratio_user1: number; // 夫の負担割合 (0〜100, デフォルト: 50)
   ratio_user2: number; // 妻の負担割合 (0〜100, デフォルト: 50)
+  monthly_budget?: number; // 毎月の生活費目標予算 (円)
   created_at: string;
 }
+
+export interface QuickPreset {
+  id: string;
+  title: string;
+  category: CategoryType;
+  paid_by_name: string;
+  split_type: SplitType;
+  default_amount?: number;
+  icon?: string;
+  count?: number;
+}
+
 
 export interface SupabaseConfig {
   url: string;

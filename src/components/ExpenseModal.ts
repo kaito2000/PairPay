@@ -1,12 +1,40 @@
-import { CATEGORIES, CategoryType, Household } from '../types.ts';
+import { CATEGORIES, CategoryType, Household, QuickPreset } from '../types.ts';
 
-export function renderExpenseModal(household: Household): string {
+export function renderExpenseModal(household: Household, presets: QuickPreset[] = []): string {
   const todayStr = new Date().toISOString().split('T')[0];
 
   return `
     <!-- 開くための固定フローティングトリガー (画面下部) -->
-    <div class="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#fbfaf8] via-[#fbfaf8]/95 to-[#fbfaf8]/0 z-30 max-w-md mx-auto pointer-events-none pb-6">
-      <button id="btn-open-modal" class="pointer-events-auto w-full py-4 px-5 rounded-[22px] bg-gradient-to-r from-[#52796f] to-[#3d5a53] hover:from-[#486b62] hover:to-[#354f49] active:scale-[0.98] text-white font-extrabold text-sm shadow-floating flex items-center justify-center gap-2.5 transition-all cursor-pointer">
+    <div class="fixed bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-[#fbfaf8] via-[#fbfaf8]/95 to-[#fbfaf8]/0 z-30 max-w-md mx-auto pointer-events-none pb-5 space-y-1.5">
+      ${
+        presets.length > 0
+          ? `
+        <!-- クイック入力チップス (よく使う定番項目) -->
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pointer-events-auto justify-center px-1">
+          ${presets
+            .map(
+              (p) => `
+            <button
+              type="button"
+              data-preset-trigger
+              data-title="${p.title}"
+              data-category="${p.category}"
+              data-payer="${p.paid_by_name}"
+              data-split="${p.split_type}"
+              data-amount="${p.default_amount || 0}"
+              class="px-2.5 py-1 rounded-xl bg-white border border-[#ded9ce] hover:border-[#52796f] text-[10.5px] font-bold text-[#2d312e] shadow-2xs active:scale-95 flex items-center gap-1 transition-all shrink-0 cursor-pointer"
+            >
+              <i data-lucide="${p.icon || 'receipt'}" class="w-3 h-3 text-[#52796f] shrink-0"></i>
+              <span class="truncate max-w-[80px]">${p.title}</span>
+            </button>
+          `
+            )
+            .join('')}
+        </div>
+      `
+          : ''
+      }
+      <button id="btn-open-modal" class="pointer-events-auto w-full py-3.5 px-5 rounded-[20px] bg-gradient-to-r from-[#52796f] to-[#3d5a53] hover:from-[#486b62] hover:to-[#354f49] active:scale-[0.98] text-white font-extrabold text-sm shadow-floating flex items-center justify-center gap-2 transition-all cursor-pointer">
         <i data-lucide="plus-circle" class="w-5 h-5"></i>
         <span>支出を記録する</span>
       </button>
@@ -166,6 +194,38 @@ export function renderExpenseModal(household: Household): string {
             </div>
             <input type="hidden" id="input-category" value="food" />
           </div>
+
+          <!-- 3.5 よく使う定番項目 (モーダル内クイック補完) -->
+          ${
+            presets.length > 0
+              ? `
+            <div class="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+              <span class="text-[9.5px] font-bold text-[#808781] shrink-0 mr-0.5 flex items-center gap-0.5">
+                <i data-lucide="sparkles" class="w-3 h-3 text-[#cb8634]"></i>定番:
+              </span>
+              ${presets
+                .map(
+                  (p) => `
+                <button
+                  type="button"
+                  data-preset-fill
+                  data-title="${p.title}"
+                  data-category="${p.category}"
+                  data-payer="${p.paid_by_name}"
+                  data-split="${p.split_type}"
+                  data-amount="${p.default_amount || 0}"
+                  class="px-2 py-0.5 rounded-lg bg-[#fbfaf8] border border-[#ded9ce] hover:bg-[#edf4ee] hover:border-[#52796f] text-[9.5px] font-bold text-[#4a504b] active:scale-95 flex items-center gap-1 transition-all shrink-0 cursor-pointer"
+                >
+                  <i data-lucide="${p.icon || 'receipt'}" class="w-2.5 h-2.5 text-[#52796f] shrink-0"></i>
+                  <span class="truncate max-w-[70px]">${p.title}</span>
+                </button>
+              `
+                )
+                .join('')}
+            </div>
+          `
+              : ''
+          }
 
           <!-- 4. メモ & 日付 (横並び・同じ高さ・はみ出し防止) -->
           <div class="flex items-center gap-1.5 w-full">

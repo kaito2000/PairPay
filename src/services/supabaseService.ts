@@ -236,18 +236,41 @@ export class SupabaseService {
     const supabase = getSupabaseClient();
     if (!supabase) return false;
 
+    const updatePayload: Record<string, any> = {
+      name: household.name,
+      user1_name: household.user1_name,
+      user2_name: household.user2_name,
+      ratio_user1: household.ratio_user1,
+      ratio_user2: household.ratio_user2,
+      monthly_budget: typeof household.monthly_budget === 'number' ? household.monthly_budget : null,
+    };
+
     const { error } = await supabase
       .from('households')
-      .update({
+      .update(updatePayload)
+      .eq('id', household.id);
+
+    if (!error) return true;
+
+    // もし monthly_budget カラムが未定義の旧スキーマの場合、除外して再試行
+    if (error.code === '42703' || error.message?.includes('monthly_budget')) {
+      console.warn('monthly_budget column not found on households table, retrying without it');
+      const fallbackPayload = {
         name: household.name,
         user1_name: household.user1_name,
         user2_name: household.user2_name,
         ratio_user1: household.ratio_user1,
         ratio_user2: household.ratio_user2,
-      })
-      .eq('id', household.id);
+      };
+      const { error: fallbackError } = await supabase
+        .from('households')
+        .update(fallbackPayload)
+        .eq('id', household.id);
+      return !fallbackError;
+    }
 
-    return !error;
+    console.warn('Failed to update household in Supabase', error);
+    return false;
   }
 
   /**

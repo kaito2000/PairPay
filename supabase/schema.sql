@@ -297,3 +297,8 @@ using (
 with check (
   household_id in (select household_id from public.profiles where id = auth.uid())
 );
+
+-- ==============================================================================
+-- 7. 既存環境向けマイグレーション (monthly_budget 追加)
+-- ==============================================================================
+alter table public.households add column if not exists monthly_budget integer;
