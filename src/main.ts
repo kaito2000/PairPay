@@ -184,6 +184,15 @@ function renderApp() {
 
   // 選択月の支出データ
   const monthlyExpenses = filterExpensesByMonth(expenses, selectedYearMonth);
+
+  // 選択中のタグが現在の月内に存在しない場合は自動クリア (幽霊フィルター防止)
+  if (selectedTag) {
+    const hasTagInMonth = monthlyExpenses.some((e) => e.tags && e.tags.includes(selectedTag!));
+    if (!hasTagInMonth) {
+      selectedTag = null;
+    }
+  }
+
   const unsettledInMonth = monthlyExpenses.filter((e) => !e.is_settled);
   const monthlyTotal = monthlyExpenses.reduce((sum, e) => sum + e.amount, 0);
 
@@ -295,16 +304,19 @@ function attachEventListeners(
 
   btnPrevMonth?.addEventListener('click', () => {
     selectedYearMonth = shiftMonth(selectedYearMonth, -1);
+    selectedTag = null;
     renderApp();
   });
 
   btnNextMonth?.addEventListener('click', () => {
     selectedYearMonth = shiftMonth(selectedYearMonth, 1);
+    selectedTag = null;
     renderApp();
   });
 
   btnCurrentMonth?.addEventListener('click', () => {
     selectedYearMonth = getCurrentYearMonth();
+    selectedTag = null;
     renderApp();
   });
 
@@ -312,6 +324,7 @@ function attachEventListeners(
     const target = e.target as HTMLSelectElement;
     if (target.value) {
       selectedYearMonth = target.value;
+      selectedTag = null;
       renderApp();
     }
   });
@@ -812,6 +825,7 @@ function attachEventListeners(
 
         const enteredYM = expenseDate.substring(0, 7);
         selectedYearMonth = enteredYM;
+        selectedTag = null;
 
         closeModal();
         renderApp();
@@ -857,6 +871,7 @@ function attachEventListeners(
         // 入力した日付の月に自動移動して確認できるようにする
         const enteredYM = expenseDate.substring(0, 7);
         selectedYearMonth = enteredYM;
+        selectedTag = null;
 
         closeModal();
         renderApp();
@@ -910,6 +925,7 @@ function attachEventListeners(
           LocalStorageService.deleteExpense(id);
           expenses = LocalStorageService.getExpenses();
         }
+        selectedTag = null;
         renderApp();
         showToast('支出を削除しました');
       }

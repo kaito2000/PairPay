@@ -55,12 +55,12 @@ export function hydrateExpenseTags(expense: Expense): Expense {
   const localMap = getLocalTagsMap();
   const cachedTags = localMap[expense.id];
 
-  // 1. すでに expense.tags が配列として存在する場合
-  if (Array.isArray(expense.tags) && expense.tags.length > 0) {
+  // 1. すでに expense.tags が配列として存在する場合 (空配列も含む)
+  if (Array.isArray(expense.tags)) {
     // title に [tag:...] が残っていれば除去してクリーンにする
     const cleanTitle = (expense.title || '').replace(/\s*\[tag:[^\]]+\]\s*$/, '').trim();
     saveLocalTags(expense.id, expense.tags);
-    return { ...expense, title: cleanTitle };
+    return { ...expense, title: cleanTitle, tags: expense.tags };
   }
 
   // 2. title から [tag:...] を抽出

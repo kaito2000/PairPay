@@ -155,7 +155,44 @@ const listHydrated = hydrateExpensesTags([dbRowWithoutTagsCol]);
 assert.strictEqual(listHydrated[0].title, '新幹線チケット');
 assert.deepStrictEqual(listHydrated[0].tags, ['旅行', '交通費']);
 
+// 4-4. タグ削除時 (空配列) のテスト
+const rowWithTagsRemoved: Expense = {
+  id: 'exp-sync-test-1',
+  household_id: 'h1',
+  title: '新幹線チケット',
+  amount: 28000,
+  category: 'other',
+  paid_by_name: '夫',
+  expense_date: '2026-10-03',
+  is_settled: false,
+  created_at: new Date().toISOString(),
+  tags: [], // タグを消した
+};
+const hydratedRemoved = hydrateExpenseTags(rowWithTagsRemoved);
+assert.strictEqual(hydratedRemoved.title, '新幹線チケット');
+assert.deepStrictEqual(hydratedRemoved.tags, [], 'タグを消した場合は空配列が維持されること');
+
 console.log('  透過的タグ同期 (tagSync): ALL PASSED ✅\n');
+
+// 5. 幽霊フィルター防止テスト (effectiveTag)
+console.log('5. 幽霊フィルター防止テスト (effectiveTag ロジック)');
+const testMonthlyExpenses: Expense[] = [
+  { ...sampleExpenses[0], tags: ['食費'] },
+  { ...sampleExpenses[1], tags: [] }, // タグを消した支出
+];
+const currentMonthlyTags = Array.from(
+  new Set(testMonthlyExpenses.flatMap((e) => (e.tags && Array.isArray(e.tags) ? e.tags : [])))
+);
+// 消されたタグ「カフェ」が selectedTag に残っていた場合
+const ghostTag = 'カフェ';
+const effectiveGhostTag = currentMonthlyTags.includes(ghostTag) ? ghostTag : null;
+assert.strictEqual(effectiveGhostTag, null, '存在しないタグは自動的にnullにフォールバックすること');
+
+// 存在するタグ「食費」の場合
+const validTag = '食費';
+const effectiveValidTag = currentMonthlyTags.includes(validTag) ? validTag : null;
+assert.strictEqual(effectiveValidTag, '食費', '存在するタグは有効');
+console.log('  幽霊フィルター防止テスト: ALL PASSED ✅\n');
 
 console.log('🎉 ALL PRESET & TAG TESTS COMPLETED SUCCESSFULLY! 🎉');
 

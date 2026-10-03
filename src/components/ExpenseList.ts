@@ -16,9 +16,12 @@ export function renderExpenseList(
     )
   );
 
+  // 選択中タグが今月の支出に存在しない場合は自動クリア (幽霊フィルター防止)
+  const effectiveTag = selectedTag && monthlyTags.includes(selectedTag) ? selectedTag : null;
+
   let filtered = showAll ? monthlyExpenses : monthlyExpenses.filter((e) => !e.is_settled);
-  if (selectedTag) {
-    filtered = filtered.filter((e) => e.tags && e.tags.includes(selectedTag));
+  if (effectiveTag) {
+    filtered = filtered.filter((e) => e.tags && e.tags.includes(effectiveTag));
   }
 
   const totalAmount = filtered.reduce((sum, e) => sum + e.amount, 0);
@@ -58,7 +61,7 @@ export function renderExpenseList(
               type="button"
               data-filter-tag=""
               class="px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all shrink-0 cursor-pointer ${
-                !selectedTag
+                !effectiveTag
                   ? 'bg-[#2d312e] text-white shadow-2xs font-extrabold'
                   : 'bg-[#f4f1ea] text-[#6d746f] hover:bg-[#ece8e1]'
               }"
@@ -67,7 +70,7 @@ export function renderExpenseList(
             </button>
             ${monthlyTags
               .map((tag) => {
-                const isSelected = selectedTag === tag;
+                const isSelected = effectiveTag === tag;
                 const count = monthlyExpenses.filter((e) => e.tags?.includes(tag)).length;
                 return `
                 <button
@@ -99,8 +102,28 @@ export function renderExpenseList(
             <div class="w-12 h-12 rounded-2xl bg-[#f7f5f0] flex items-center justify-center mx-auto mb-2.5 text-[#a8a29e] border border-[#ece8e1]">
               <i data-lucide="receipt" class="w-5 h-5"></i>
             </div>
-            <p class="text-xs text-[#78716c] font-bold">${selectedMonthLabel}の対象支出はありません</p>
-            <p class="text-[11px] text-[#a8a29e] mt-1">下のボタンからカンタンに記録できます</p>
+            <p class="text-xs text-[#78716c] font-bold">
+              ${
+                effectiveTag
+                  ? `タグ「#${escapeHtml(effectiveTag)}」の対象支出はありません`
+                  : `${selectedMonthLabel}の対象支出はありません`
+              }
+            </p>
+            ${
+              effectiveTag
+                ? `
+              <button
+                type="button"
+                data-filter-tag=""
+                class="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#52796f] text-white text-[11px] font-bold hover:bg-[#42625a] active:scale-95 transition-all shadow-xs cursor-pointer"
+              >
+                <span>絞り込みを解除してすべて表示</span>
+              </button>
+            `
+                : `
+              <p class="text-[11px] text-[#a8a29e] mt-1">下のボタンからカンタンに記録できます</p>
+            `
+            }
           </div>
         `
           : `
