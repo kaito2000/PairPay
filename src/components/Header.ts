@@ -36,23 +36,23 @@ export function renderHeader(
   }
 
   return `
-    <header class="sticky top-0 z-20 bg-[#fbfaf8]/92 backdrop-blur-md border-b border-[#ece8e1] px-4 py-3 flex items-center justify-between">
+    <header class="px-4 pt-3 pb-1.5 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <img
           src="./icon-192.png"
           alt="PairPay Logo"
-          class="w-9 h-9 rounded-2xl object-cover shadow-soft border border-[#ece8e1] shrink-0"
+          class="w-8 h-8 rounded-xl object-cover shadow-soft border border-[#ece8e1] shrink-0"
         />
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-base font-extrabold tracking-tight text-[#2d312e] leading-tight">PairPay</h1>
+            <h1 class="text-sm font-black tracking-tight text-[#2d312e] leading-tight">PairPay</h1>
             ${badgeHtml}
           </div>
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <button id="btn-open-settings" class="w-9 h-9 rounded-full bg-white flex items-center justify-center text-[#5c635e] hover:text-[#2d312e] active:scale-95 transition-all shadow-soft border border-[#ece8e1] cursor-pointer" aria-label="設定">
-          <i data-lucide="settings" class="w-4 h-4"></i>
+        <button id="btn-open-settings" class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#5c635e] hover:text-[#2d312e] active:scale-95 transition-all shadow-soft border border-[#ece8e1] cursor-pointer" aria-label="設定">
+          <i data-lucide="settings" class="w-3.5 h-3.5"></i>
         </button>
       </div>
     </header>

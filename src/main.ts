@@ -213,9 +213,14 @@ function renderApp() {
   const supabaseConfig = getSupabaseConfig();
 
   app.innerHTML = `
-    ${renderHeader(isCloudSyncActive, SyncQueueService.getPendingCount(), isOnline)}
-    <main class="p-4 space-y-3.5 flex-1">
-      ${renderMonthNavigator(selectedYearMonth, currentYM, availableMonths)}
+    <!-- 固定ヘッダー & 月切り替えタブ (スクロール時も画面上部に固定) -->
+    <div class="sticky top-0 z-20 bg-[#fbfaf8]/96 backdrop-blur-md border-b border-[#ece8e1] shadow-2xs">
+      ${renderHeader(isCloudSyncActive, SyncQueueService.getPendingCount(), isOnline)}
+      <div class="px-4 pb-2.5 pt-0.5 max-w-md mx-auto">
+        ${renderMonthNavigator(selectedYearMonth, currentYM, availableMonths)}
+      </div>
+    </div>
+    <main class="p-4 space-y-3.5 flex-1 max-w-md mx-auto pb-24">
       ${renderSettlementCard(
         settlementSummary,
         household,

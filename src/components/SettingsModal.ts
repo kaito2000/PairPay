@@ -16,21 +16,23 @@ export function renderSettingsModal(
 
   return `
     <div id="settings-modal-overlay" class="fixed inset-0 bg-[#1e2320]/60 backdrop-blur-xs z-40 hidden animate-fade-in transition-opacity">
-      <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-[32px] shadow-2xl p-5 z-50 animate-slide-up mx-auto max-h-[90vh] overflow-y-auto no-scrollbar border border-[#eeebe4]">
+      <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-[32px] shadow-2xl z-50 animate-slide-up mx-auto max-h-[90vh] flex flex-col overflow-hidden border border-[#eeebe4]">
         
-        <div class="flex items-center justify-between mb-4">
+        <!-- 固定ヘッダー (スクロールしても常に上に固定) -->
+        <div class="flex items-center justify-between p-4 px-5 border-b border-[#f4f1ea] shrink-0 bg-white/95 backdrop-blur-md">
           <div class="flex items-center gap-2">
             <div class="w-8 h-8 rounded-xl bg-[#edf4ee] flex items-center justify-center text-[#52796f]">
               <i data-lucide="settings" class="w-4 h-4"></i>
             </div>
             <h2 class="text-base font-extrabold text-[#2d312e]">設定</h2>
           </div>
-          <button type="button" id="btn-close-settings" class="w-8 h-8 rounded-full flex items-center justify-center text-[#999f9a] hover:text-[#2d312e] hover:bg-[#f5f2eb] transition-all cursor-pointer">
+          <button type="button" id="btn-close-settings" class="w-8 h-8 rounded-full flex items-center justify-center text-[#999f9a] hover:text-[#2d312e] hover:bg-[#f5f2eb] transition-all cursor-pointer" aria-label="設定を閉じる">
             <i data-lucide="x" class="w-4 h-4"></i>
           </button>
         </div>
 
-        <div class="space-y-4">
+        <!-- スクロール可能な設定項目コンテンツ -->
+        <div class="flex-1 overflow-y-auto no-scrollbar p-5 space-y-4">
           <!-- 1. 世帯設定（名前 & 負担割合） -->
           <form id="form-settings" class="space-y-3.5 bg-[#fbfaf8] p-3.5 rounded-2xl border border-[#eeebe4]">
             <div class="space-y-2">
