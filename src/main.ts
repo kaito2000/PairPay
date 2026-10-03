@@ -217,8 +217,8 @@ function renderApp() {
     ${renderHeader(isCloudSyncActive, SyncQueueService.getPendingCount(), isOnline)}
 
     <main class="p-4 space-y-3.5 flex-1 max-w-md mx-auto pb-24">
-      <!-- 独立した月切り替えタブ (上部ヘッダーの下に固定され、スクロールされない) -->
-      <div class="sticky top-14 z-10 bg-[#fbfaf8]/95 backdrop-blur-md py-1.5 -mx-4 px-4">
+      <!-- 独立した月切り替えタブ (上部ヘッダーの下に最前面で固定され、スクロールされない) -->
+      <div class="sticky top-14 z-20 bg-[#fbfaf8] py-1.5 -mx-4 px-4 shadow-2xs">
         ${renderMonthNavigator(selectedYearMonth, currentYM, availableMonths)}
       </div>
 

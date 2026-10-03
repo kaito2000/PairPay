@@ -8,7 +8,7 @@ export function renderMonthNavigator(
   const isCurrentMonth = selectedYearMonth === currentYearMonth;
 
   return `
-    <div class="bg-white rounded-[22px] p-2 px-3 border border-[#ece8e1] shadow-soft flex items-center justify-between gap-2">
+    <div class="bg-white rounded-[22px] p-2 px-3 border border-[#ece8e1] shadow-soft flex items-center justify-between gap-2 relative z-20">
       <!-- 前月ボタン -->
       <button
         id="btn-prev-month"
