@@ -59,7 +59,6 @@ import { renderSettlementCard } from './components/SettlementCard.ts';
 import { renderCategoryBar } from './components/CategoryBar.ts';
 import { renderExpenseList } from './components/ExpenseList.ts';
 import { renderExpenseModal } from './components/ExpenseModal.ts';
-import { renderBudgetCard } from './components/BudgetCard.ts';
 import { renderSettingsModal } from './components/SettingsModal.ts';
 import { renderSettlementHistoryModal } from './components/SettlementHistoryModal.ts';
 import { renderRecurringModal } from './components/RecurringModal.ts';
@@ -195,11 +194,6 @@ function renderApp() {
     .filter((e) => e.paid_by_name === household.user2_name)
     .reduce((sum, e) => sum + e.amount, 0);
 
-  // 前月の支出データ (生活費予算の前月比較用)
-  const prevYM = shiftMonth(selectedYearMonth, -1);
-  const prevMonthExpenses = filterExpensesByMonth(expenses, prevYM);
-  const prevMonthTotal = prevMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
-
   // よく使うクイックプリセット (過去の支出実績から抽出)
   const quickPresets = getQuickPresets(expenses, household);
 
@@ -220,7 +214,6 @@ function renderApp() {
         user1TotalPaid,
         user2TotalPaid
       )}
-      ${renderBudgetCard(household.monthly_budget, monthlyTotal, prevMonthTotal, selectedMonthLabel)}
       ${renderCategoryBar(monthlyExpenses, selectedMonthLabel)}
       ${renderExpenseList(monthlyExpenses, household, showAllExpenses, selectedMonthLabel)}
     </main>
@@ -1019,19 +1012,6 @@ function attachEventListeners(
     settingsModalOverlay?.classList.remove('hidden');
   });
 
-  // 予算設定ボタン（カードから直接設定モーダルを開く）
-  const btnOpenBudgetSetting = document.getElementById('btn-open-budget-setting');
-  btnOpenBudgetSetting?.addEventListener('click', () => {
-    settingsModalOverlay?.classList.remove('hidden');
-    const budgetInput = document.getElementById('settings-monthly-budget') as HTMLInputElement;
-    if (budgetInput) {
-      setTimeout(() => {
-        budgetInput.focus();
-        budgetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
-    }
-  });
-
   btnCloseSettings?.addEventListener('click', () => {
     settingsModalOverlay?.classList.add('hidden');
   });
@@ -1071,17 +1051,12 @@ function attachEventListeners(
     const newUser1 = user1Input.value.trim() || '夫';
     const newUser2 = user2Input.value.trim() || '妻';
 
-    const budgetInput = document.getElementById('settings-monthly-budget') as HTMLInputElement;
-    const rawBudget = budgetInput ? parseInt(budgetInput.value, 10) : NaN;
-    const monthlyBudget = !isNaN(rawBudget) && rawBudget > 0 ? rawBudget : undefined;
-
     household = {
       ...household,
       user1_name: newUser1,
       user2_name: newUser2,
       ratio_user1: r1,
       ratio_user2: r2,
-      monthly_budget: monthlyBudget,
     };
 
     // 名前の変更があれば過去の支出履歴の立替者名も一括更新

@@ -83,29 +83,6 @@ export function renderSettingsModal(
               </div>
             </div>
 
-            <!-- 毎月の生活費目標予算 -->
-            <div class="space-y-1.5 pt-1 border-t border-[#ece8e1]">
-              <div class="flex items-center justify-between">
-                <label for="settings-monthly-budget" class="text-xs font-bold text-[#4a504b] flex items-center gap-1">
-                  <i data-lucide="calculator" class="w-3.5 h-3.5 text-[#52796f]"></i>
-                  <span>毎月の生活費目標予算</span>
-                </label>
-                <span class="text-[10px] text-[#808781]">未設定なら空欄</span>
-              </div>
-              <div class="relative">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#808781]">¥</span>
-                <input
-                  type="number"
-                  id="settings-monthly-budget"
-                  value="${household.monthly_budget || ''}"
-                  placeholder="例: 150000"
-                  min="0"
-                  step="1000"
-                  class="w-full pl-7 pr-3 py-2 bg-white border border-[#ded9ce] rounded-xl text-xs font-bold text-[#2d312e] focus:border-[#52796f] outline-none"
-                />
-              </div>
-            </div>
-
             <button
               type="submit"
               class="w-full py-2.5 px-4 rounded-xl bg-[#2d312e] hover:bg-[#3d423e] active:scale-[0.98] text-white font-bold text-xs shadow-soft transition-all cursor-pointer"
